@@ -572,13 +572,13 @@ export const LEVELS = [
   }),
   L("7-06", 7, "Last Geometry", {
     lesson: "Quiet geometry. No extra advice.",
-    briefing: "Four waves. Relics in the corners. Scanner before the unseen, shield before the star. Finish the survey.",
+    briefing: "Four waves. Relics sit one I off the plus. Scanner before the unseen, shield before the star. Finish the survey.",
     start: { minerals: 36, food: 18, crew: 6 },
     relics: [
-      { x: 0, y: 0 },
-      { x: 8, y: 0 },
-      { x: 0, y: 12 },
-      { x: 8, y: 12 },
+      { x: 2, y: 3 },
+      { x: 6, y: 3 },
+      { x: 2, y: 9 },
+      { x: 6, y: 9 },
     ],
     deposits: [{ x: 1, y: 6 }, { x: 7, y: 6 }],
     ice: [
@@ -592,7 +592,7 @@ export const LEVELS = [
       wormholes: true,
       kitchenChain: true,
       overload: true,
-      flares: { first: 26, interval: 20, damage: 9, telegraph: 2.8 },
+      flares: { first: 28, interval: 20, damage: 9, telegraph: 2.8 },
       pieceQueue: true,
     },
     allowed: [
@@ -608,7 +608,7 @@ export const LEVELS = [
       "scanner",
       "beacon",
     ],
-    waves: { first: 32, interval: 24, count: (n) => Math.min(4, 1 + n), hp: (n) => 24 + n * 7, speed: 20, max: 4, cloaked: true },
+    waves: { first: 40, interval: 24, count: (n) => Math.min(4, 1 + n), hp: (n) => 24 + n * 7, speed: 20, max: 4, cloaked: true },
     eatRate: 0.016,
     win: { relics: 4, surviveWaves: 4 },
     par: 200,

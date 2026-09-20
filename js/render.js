@@ -21,7 +21,7 @@ function seedStars(n) {
       p: rnd() * Math.PI * 2,
     });
   }
-  for (let i = 0; i < 28; i++) {
+  for (let i = 0; i < 36; i++) {
     motes.push({
       x: rnd(),
       y: rnd(),
@@ -41,7 +41,7 @@ function round(ctx, x, y, w, h, r) {
 export function drawWorld(ctx, match, view, now) {
   const w = view.w;
   const h = view.h;
-  if (!stars) seedStars(150);
+  if (!stars) seedStars(180);
   ctx.clearRect(0, 0, w, h);
   ctx.save();
   if (match.shake > 0) {
@@ -49,20 +49,24 @@ export function drawWorld(ctx, match, view, now) {
   }
 
   const g = ctx.createRadialGradient(w * 0.32, h * 0.18, 12, w * 0.48, h * 0.42, Math.max(w, h) * 0.78);
-  g.addColorStop(0, "#1a1e2c");
-  g.addColorStop(0.35, "#10131c");
-  g.addColorStop(0.7, VOID);
+  g.addColorStop(0, "#22283a");
+  g.addColorStop(0.28, "#151826");
+  g.addColorStop(0.62, "#0c0f16");
   g.addColorStop(1, "#040406");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
-  ctx.fillStyle = "rgba(70, 86, 130, 0.14)";
+  ctx.fillStyle = "rgba(90, 120, 170, 0.16)";
   ctx.beginPath();
-  ctx.ellipse(w * 0.2, h * 0.08, w * 0.45, 70, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(w * 0.22, h * 0.06, w * 0.52, 82, -0.18, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "rgba(90, 50, 70, 0.1)";
+  ctx.fillStyle = "rgba(110, 55, 80, 0.12)";
   ctx.beginPath();
-  ctx.ellipse(w * 0.85, h * 0.72, 120, 180, 0.4, 0, Math.PI * 2);
+  ctx.ellipse(w * 0.86, h * 0.7, 140, 200, 0.42, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(110, 195, 201, 0.05)";
+  ctx.beginPath();
+  ctx.ellipse(w * 0.55, h * 0.22, w * 0.4, 40, 0.1, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "#1a2030";
@@ -107,6 +111,7 @@ export function drawWorld(ctx, match, view, now) {
   ctx.stroke();
 
   drawTerrain(ctx, match, now);
+  drawRoomGlow(ctx, match, now);
   drawValidCells(ctx, match);
   drawShieldAuras(ctx, match, now);
   drawRooms(ctx, match, now);
@@ -129,6 +134,20 @@ function cellRect(match, x, y, inset) {
     w: L.cell - pad * 2,
     h: L.cell - pad * 2,
   };
+}
+
+function drawRoomGlow(ctx, match, now) {
+  for (const room of match.rooms) {
+    if (!room.built || room.dead) continue;
+    const staff = match.kapsels.some((k) => k.assignment === room.id);
+    const a = room.type === "core" ? 0.16 : staff ? 0.11 : 0.05;
+    ctx.fillStyle = room.type === "core"
+      ? `rgba(243,240,232,${0.1 + Math.sin(now * 0.003) * 0.04})`
+      : `rgba(243,240,232,${a})`;
+    ctx.beginPath();
+    ctx.arc(room.cx, room.cy, match.layout.cell * (room.type === "core" ? 2.1 : 1.15), 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function drawValidCells(ctx, match) {
@@ -170,6 +189,8 @@ function drawTerrain(ctx, match, now) {
     ctx.fill();
     ctx.strokeStyle = "rgba(220,236,255,0.45)";
     ctx.stroke();
+    ctx.fillStyle = `rgba(255,255,255,${0.18 + Math.sin(now * 0.004 + x + y) * 0.12})`;
+    ctx.fillRect(r.x + r.w * 0.2, r.y + 3, 3, 3);
   }
   for (const well of match.wells) {
     const L = match.layout;
@@ -185,11 +206,26 @@ function drawTerrain(ctx, match, now) {
   }
   for (const relic of match.relics) {
     const r = cellRect(match, relic.x, relic.y, 7);
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    if (relic.linked) {
+      ctx.fillStyle = `rgba(232,217,160,${0.12 + Math.sin(now * 0.005) * 0.06})`;
+      ctx.beginPath();
+      ctx.arc(cx, cy + 4, 14, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.fillStyle = relic.linked ? "#e8d9a0" : "#9aa0ae";
     ctx.beginPath();
     ctx.moveTo(r.x + r.w / 2, r.y - 6);
     ctx.lineTo(r.x + r.w, r.y + r.h);
     ctx.lineTo(r.x, r.y + r.h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = relic.linked ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.12)";
+    ctx.beginPath();
+    ctx.moveTo(cx, r.y - 2);
+    ctx.lineTo(r.x + r.w * 0.72, r.y + r.h * 0.45);
+    ctx.lineTo(cx, r.y + r.h * 0.4);
     ctx.closePath();
     ctx.fill();
     if (relic.linked) {
@@ -248,6 +284,14 @@ function drawRooms(ctx, match, now) {
         ctx.fillStyle = room.type === "extractor" ? `rgba(213,107,140,${glow})` : `rgba(94,168,106,${glow})`;
         round(ctx, r.x - 1, r.y - 1, r.w + 2, r.h + 2, 6);
         ctx.fill();
+      }
+      if (room.built) {
+        const staff = match.kapsels.some((k) => k.assignment === room.id);
+        if (staff) {
+          ctx.fillStyle = "rgba(243,240,232,0.08)";
+          round(ctx, r.x + 3, r.y + 3, r.w - 6, r.h - 6, 3);
+          ctx.fill();
+        }
       }
       if (teach && room.built) {
         ctx.strokeStyle = `rgba(232,217,160,${0.55 + Math.sin(now * 0.01) * 0.35})`;
@@ -486,12 +530,26 @@ function drawEnemies(ctx, match) {
     ctx.save();
     ctx.translate(e.x, e.y);
     ctx.rotate(e.dir + Math.PI / 2);
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.moveTo(0, -e.r + 2);
+    ctx.lineTo(e.r - 1, e.r * 0.75);
+    ctx.lineTo(-e.r + 1, e.r * 0.75);
+    ctx.closePath();
+    ctx.fill();
     ctx.fillStyle = "#e24b52";
     ctx.beginPath();
     ctx.moveTo(0, -e.r);
     ctx.lineTo(e.r, e.r * 0.75);
     ctx.lineTo(0, e.r * 0.28);
     ctx.lineTo(-e.r, e.r * 0.75);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.22)";
+    ctx.beginPath();
+    ctx.moveTo(0, -e.r + 2);
+    ctx.lineTo(e.r * 0.35, -e.r * 0.2);
+    ctx.lineTo(0, e.r * 0.1);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
@@ -510,6 +568,10 @@ function drawShots(ctx, match) {
     const dx = s.target ? s.target.x - s.x : 0;
     const dy = s.target ? s.target.y - s.y : 0;
     const d = Math.hypot(dx, dy) || 1;
+    ctx.fillStyle = "rgba(243,240,232,0.16)";
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 7, 0, Math.PI * 2);
+    ctx.fill();
     ctx.strokeStyle = "rgba(243,240,232,0.22)";
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -599,9 +661,10 @@ function drawFloats(ctx, match) {
 }
 
 function drawVignette(ctx, match, w, h) {
-  const v = ctx.createRadialGradient(w / 2, h * 0.42, Math.min(w, h) * 0.2, w / 2, h / 2, Math.max(w, h) * 0.72);
+  const v = ctx.createRadialGradient(w / 2, h * 0.42, Math.min(w, h) * 0.18, w / 2, h / 2, Math.max(w, h) * 0.74);
   v.addColorStop(0, "rgba(0,0,0,0)");
-  v.addColorStop(1, "rgba(0,0,0,0.38)");
+  v.addColorStop(0.7, "rgba(0,0,0,0.12)");
+  v.addColorStop(1, "rgba(0,0,0,0.46)");
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, w, h);
   if (match.flare && match.flare.warning > 0) {

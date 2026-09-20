@@ -1,4 +1,4 @@
-const CACHE = "rhyme-v4";
+const CACHE = "rhyme-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -9,6 +9,7 @@ const ASSETS = [
   "./js/render.js",
   "./js/audio.js",
   "./js/save.js",
+  "./js/install.js",
   "./manifest.webmanifest",
   "./icons/icon.svg",
   "./icons/icon-192.png",

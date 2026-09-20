@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { LEVELS, levelById } from "../js/levels.js";
-import { createMatch, step } from "../js/sim.js";
+import { createMatch, step, tapCell, setTool, canPlace, coreStock, playerShape, rotateShape } from "../js/sim.js";
 import { shouldShowInstallHint } from "../js/install.js";
 import { toneFor } from "../js/audio.js";
 
@@ -67,7 +67,99 @@ describe("Last Geometry is a finale, not a trap", () => {
       assert.equal(blocked.has(core.x + dx + "," + (core.y + dy)), false, "ice on core");
     }
   });
+
+  it("sits monuments one I off the plus, not in true corners", () => {
+    const last = levelById("7-06");
+    const core = last.core || { x: 4, y: 6 };
+    const plus = [
+      [0, 0],
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+    ].map(([dx, dy]) => ({ x: core.x + dx, y: core.y + dy }));
+    for (const r of last.relics) {
+      const man = Math.min(...plus.map((c) => Math.abs(c.x - r.x) + Math.abs(c.y - r.y)));
+      assert.ok(man >= 3, `relic ${r.x},${r.y} hugs the core`);
+      assert.ok(man <= 4, `relic ${r.x},${r.y} is ${man} from the plus`);
+    }
+  });
+
+  it("lets a surveyor kiss all four relics with the opening mineral bank", () => {
+    const m = createMatch(levelById("7-06"), { seed: 11 });
+    const startMin = coreStock(m, "mineral");
+    assert.ok(startMin >= 36, startMin);
+    const linked = surveyRelics(m);
+    assert.equal(linked, 4, `only ${linked} relics; minerals left ${coreStock(m, "mineral")}`);
+    assert.equal(
+      m.rooms.some((r) => r.type === "extractor"),
+      false,
+      "survey spent the opening bank, not a mine"
+    );
+    assert.ok(m.time < 90, `survey dragged to ${m.time.toFixed(1)}s`);
+  });
 });
+
+function cellsAt(match, type, x, y, rot) {
+  return rotateShape(playerShape(match, type), rot).map(([dx, dy]) => ({ x: x + dx, y: y + dy }));
+}
+
+function kissScore(match, cells) {
+  let score = 0;
+  let minMan = Infinity;
+  for (const relic of match.relics) {
+    if (relic.linked) continue;
+    for (const c of cells) {
+      const man = Math.abs(c.x - relic.x) + Math.abs(c.y - relic.y);
+      minMan = Math.min(minMan, man);
+      if (man <= 1) score += 80;
+    }
+  }
+  return score * 1000 - minMan;
+}
+
+function tryPlaceTowardRelic(match) {
+  setTool(match, "corridor");
+  let best = null;
+  const saved = match.rot;
+  for (let rot = 0; rot < 4; rot++) {
+    match.rot = rot;
+    for (let y = 0; y < match.rows; y++) {
+      for (let x = 0; x < match.cols; x++) {
+        if (!canPlace(match, "corridor", x, y, rot)) continue;
+        const sc = kissScore(match, cellsAt(match, "corridor", x, y, rot));
+        if (!best || sc > best.sc) best = { x, y, rot, sc };
+      }
+    }
+  }
+  match.rot = saved;
+  if (!best) return false;
+  match.rot = best.rot;
+  return tapCell(match, best.x, best.y);
+}
+
+function surveyRelics(match) {
+  for (let n = 0; n < 24; n++) {
+    const linked = match.relics.filter((r) => r.linked).length;
+    if (linked >= 4) return linked;
+    const unpaid = match.rooms.filter((r) => !r.built && r.type !== "core");
+    if (unpaid.length >= 2) {
+      tick(match, 6);
+      continue;
+    }
+    if (coreStock(match, "mineral") < 4) {
+      tick(match, 4);
+      continue;
+    }
+    if (!tryPlaceTowardRelic(match)) {
+      tick(match, 4);
+      continue;
+    }
+    tick(match, 5);
+  }
+  tick(match, 12);
+  return match.relics.filter((r) => r.linked).length;
+}
 
 describe("late stations you can actually finish", () => {
   it("gives Folded War, Icebreaker, and All Hands a first-wave breath and a pantry", () => {
