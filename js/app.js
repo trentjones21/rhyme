@@ -690,6 +690,7 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
         hp: Math.round(match.core.hp),
         deaths: match.deaths,
         loseReason: match.loseReason,
+        rooms: match.rooms.filter((r) => r.type !== "core").map((r) => r.type),
       };
     },
     beat() {
@@ -702,19 +703,31 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
       return this.snap();
     },
     startFinale(mult = 3) {
-      if (this._finale) clearInterval(this._finale);
-      if (match && match.thinkLocked) {
-        /* place the hull kit first; beat() unlocks when Scan/Gun/Aegis exist */
+      if (this._finale) {
+        cancelAnimationFrame(this._finale);
+        this._finale = 0;
       }
-      this._finale = setInterval(() => {
-        const s = this.beat();
-        if (s && !s.thinkLocked && speed < (mult || 3)) this.setSpeed(mult || 3);
-        if (!s || s.status !== "playing") {
-          clearInterval(this._finale);
+      if (!match || match.status !== "playing") return this.snap();
+      for (let i = 0; i < 8 && match.thinkLocked; i++) captainBeat(match);
+      if (!match.thinkLocked) {
+        speed = mult || 3;
+        $("speed").textContent = speed + "×";
+        $("speed").classList.remove("go");
+      }
+      const tick = () => {
+        if (!match || match.status !== "playing") {
           this._finale = 0;
+          return;
         }
-      }, 280);
-      return this.beat();
+        captainBeat(match);
+        if (!match.thinkLocked && speed !== (mult || 3)) {
+          speed = mult || 3;
+          $("speed").textContent = speed + "×";
+        }
+        this._finale = requestAnimationFrame(tick);
+      };
+      this._finale = requestAnimationFrame(tick);
+      return this.snap();
     },
     setSpeed(n) {
       if (match && match.thinkLocked) resumeThink(match);
