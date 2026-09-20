@@ -18,6 +18,7 @@ import {
   recall,
   jobChips,
   playerShape,
+  fitPiece,
 } from "./sim.js";
 import { LEVELS, WORLDS, levelById, nextLevel, levelsInWorld } from "./levels.js";
 import { loadSave, writeSave, completeLevel, worldUnlocked, campaignStats } from "./save.js";
@@ -225,9 +226,8 @@ function renderBag() {
     return;
   }
   el.hidden = false;
-  const cells = (name) => PIECES[name] || [];
   const mini = (name, next) => {
-    const on = new Set(cells(name).map(([x, y]) => `${x + 1},${y + 1}`));
+    const on = new Set(fitPiece(name).map(([x, y]) => `${x},${y}`));
     let html = `<div class="mini${next ? " next" : ""}" aria-label="${next ? "Next" : "Now"} ${name}">`;
     for (let y = 0; y < 4; y++) {
       for (let x = 0; x < 4; x++) {

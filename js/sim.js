@@ -96,6 +96,24 @@ export function playerShape(match, type) {
   return SHAPES[type] || SHAPES.corridor;
 }
 
+export function fitPiece(name, size = 4) {
+  const cells = PIECES[name] || [];
+  if (!cells.length) return [];
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [x, y] of cells) {
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+  const ox = Math.floor((size - (maxX - minX + 1)) / 2) - minX;
+  const oy = Math.floor((size - (maxY - minY + 1)) / 2) - minY;
+  return cells.map(([x, y]) => [x + ox, y + oy]);
+}
+
 export const SHAPES = {
   corridor: [[0, 0]],
   weapons: [[0, 0]],

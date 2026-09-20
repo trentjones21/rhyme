@@ -10,6 +10,7 @@ import {
   roomAt,
   jobChips,
   PIECES,
+  fitPiece,
 } from "../js/sim.js";
 
 function tick(match, seconds) {
@@ -42,6 +43,16 @@ describe("tetromino piece queue", () => {
     assert.ok(room);
     assert.equal(room.cells.length, 4);
     assert.equal(m.piece, "O");
+  });
+
+  it("fits every bag tetromino inside a 4x4 minimap", () => {
+    for (const name of Object.keys(PIECES)) {
+      const cells = fitPiece(name);
+      assert.equal(cells.length, 4, name);
+      for (const [x, y] of cells) {
+        assert.ok(x >= 0 && x < 4 && y >= 0 && y < 4, `${name} ${x},${y}`);
+      }
+    }
   });
 
   it("charges minerals per tile when the bag is live", () => {
