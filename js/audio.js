@@ -85,6 +85,7 @@ export const TONES = {
   haul: { freq: 330, dur: 0.06, type: "triangle", vol: 0.03, slide: 220 },
   hold: { freq: 440, dur: 0.06, type: "triangle", vol: 0.035, slide: 330 },
   go: { freq: 392, dur: 0.14, type: "sine", vol: 0.05, slide: 620 },
+  relic: { freq: 523, dur: 0.22, type: "sine", vol: 0.05, slide: 784 },
   cleared: { freq: 620, dur: 0.16, type: "sine", vol: 0.045, slide: 880 },
 };
 

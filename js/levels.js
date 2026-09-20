@@ -292,8 +292,8 @@ export const LEVELS = [
   }),
   L("4-05", 4, "Living Archive", {
     lesson: "Relics do not feed anyone. Someone still has to eat.",
-    briefing: "Link three relics while the pantry stays honest. Kitchen chain is back.",
-    start: { minerals: 18, food: 8, crew: 4 },
+    briefing: "Link three relics while the pantry stays honest. Kitchen chain is back. Garden, then kitchen, then the shore.",
+    start: { minerals: 20, food: 10, crew: 4 },
     relics: [
       { x: 0, y: 6 },
       { x: 8, y: 2 },
@@ -309,7 +309,7 @@ export const LEVELS = [
   L("4-06", 4, "Surveyors", {
     lesson: "Four relics, two waves, a star that does not care about archaeology.",
     briefing: "The shore remembers weather. Bring a shield. Touch every monument. Hold.",
-    start: { minerals: 24, food: 12, crew: 5 },
+    start: { minerals: 24, food: 16, crew: 5 },
     relics: [
       { x: 0, y: 0 },
       { x: 8, y: 0 },
@@ -327,7 +327,7 @@ export const LEVELS = [
 
   L("5-01", 5, "Shortcut", {
     lesson: "Two gates are one step.",
-    briefing: "Place a pair of gates. A kapsel should cross the station without walking the long way.",
+    briefing: "Place a pair of gates. The floor folds: a kapsel steps through violet and lands on the other pad. Staff nothing; geometry does the walking.",
     hint: "Gates pair automatically. Staff nothing; the floor itself folds.",
     start: { minerals: 12, food: 6, crew: 3 },
     mechanics: { wormholes: true },
@@ -382,7 +382,7 @@ export const LEVELS = [
   }),
   L("5-05", 5, "Fragile Bridge", {
     lesson: "A corridor spine is honest. A fold is fast and brittle.",
-    briefing: "Relics on two islands. Link them however you like. Then hold a wave.",
+    briefing: "Relics on two islands. Fold or walk. A gun on the far shore still needs a kapsel. Then hold a wave.",
     start: { minerals: 16, food: 8, crew: 4 },
     blocked: [
       { x: 4, y: 3 }, { x: 4, y: 4 }, { x: 4, y: 8 }, { x: 4, y: 9 },
@@ -571,10 +571,10 @@ export const LEVELS = [
     par: 140,
   }),
   L("7-06", 7, "Last Geometry", {
-    lesson: "Scan, then Gun, then Aegis. Two unpaid blueprints jam the hull.",
+    lesson: "Scan, then Gun, then Aegis. Garden and kitchen before monuments.",
     briefing:
-      "Time holds while you place the hull kit. Scan sees cloaks, Gun shoots, Aegis eats flares. Two dashed rooms starve construction. Kiss four relics. Four waves. TAP GO when the geometry feels right.",
-    hint: "Scan first. Then Gun. Then Aegis. Never keep two unpaid blueprints.",
+      "Time holds while you place the hull kit. Scan sees cloaks, Gun shoots, Aegis eats flares. Plant a garden and kitchen before you kiss relics — monuments do not feed anyone. Two dashed rooms starve construction. Four waves. TAP GO when the geometry feels right.",
+    hint: "Scan first. Then Gun. Then Aegis. Food before monuments. Never keep two unpaid blueprints.",
     start: { minerals: 36, food: 18, crew: 6 },
     relics: [
       { x: 2, y: 3 },
@@ -613,7 +613,7 @@ export const LEVELS = [
       "beacon",
     ],
     waves: { first: 40, interval: 24, count: (n) => Math.min(4, 1 + n), hp: (n) => 24 + n * 7, speed: 20, max: 4, cloaked: true },
-    eatRate: 0.016,
+    eatRate: 0.012,
     win: { relics: 4, surviveWaves: 4 },
     par: 200,
   }),

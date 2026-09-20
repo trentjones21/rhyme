@@ -198,6 +198,8 @@ function hud() {
   if (!match) return;
   $("mineralN").textContent = Math.floor(coreStock(match, "mineral"));
   $("foodN").textContent = Math.floor(coreStock(match, "food"));
+  const pantry = $("foodN").closest(".stat");
+  if (pantry) pantry.classList.toggle("hunger", coreStock(match, "food") < 5 || match.starve > 1);
   $("crewN").textContent = match.kapsels.length;
   const wave = $("waveN");
   $("play").classList.toggle("thinking", !!match.thinkLocked);
@@ -368,6 +370,10 @@ function consumeEvents() {
       buzz(6);
     }
     if (ev.type === "hold") audio.play("hold");
+    if (ev.type === "relic") {
+      audio.play("relic");
+      buzz([8, 20, 16]);
+    }
     if (ev.type === "go") {
       audio.play("go");
       buzz([10, 24, 12]);
@@ -605,7 +611,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=10").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=11").catch(() => {});
 }
 
 renderTitle();
@@ -621,6 +627,29 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
     resumeThink: () => match && resumeThink(match),
     coachText: () => match && coachText(match),
     rotate: () => match && rotate(match),
+    play(id, seed = 11) {
+      const level = levelById(id);
+      if (!level) return null;
+      chosen = level;
+      ended = false;
+      speed = 1;
+      $("speed").textContent = "1×";
+      $("pauseOv").classList.remove("on");
+      $("endOv").classList.remove("on");
+      $("endRetry").hidden = false;
+      $("play").classList.remove("ended");
+      match = createMatch(level, { seed: seed || 11 });
+      show("play");
+      buildTools();
+      resize();
+      $("play").classList.toggle("thinking", !!match.thinkLocked);
+      const opening = coachText(match) || level.hint || level.lesson || "";
+      $("hint").textContent = opening;
+      $("hint").classList.toggle("on", !!opening);
+      $("hint").classList.toggle("coach", !!opening);
+      $("hint").classList.remove("lesson");
+      return this.snap();
+    },
     place(type) {
       if (!match) return false;
       setTool(match, type);

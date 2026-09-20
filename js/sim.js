@@ -656,8 +656,24 @@ export function holdPiece(match) {
 
 function emitFx(match, kind, x, y, hue) {
   const life =
-    kind === "muzzle" ? 0.22 : kind === "spark" ? 0.9 : kind === "pulse" ? 0.55 : kind === "burst" ? 0.42 : 0.7;
+    kind === "muzzle"
+      ? 0.22
+      : kind === "spark"
+        ? 0.9
+        : kind === "pulse"
+          ? 0.55
+          : kind === "burst"
+            ? 0.42
+            : kind === "kiss"
+              ? 1.15
+              : 0.7;
   match.fx.push({ kind, x, y, t: 0, life, hue: hue || "#f3f0e8" });
+}
+
+function gardenResource(match) {
+  if (!match.mechanics.kitchenChain) return "food";
+  if (match.rooms.some((r) => r.type === "kitchen" && r.built && !r.dead)) return "biomass";
+  return "food";
 }
 
 function placePrebuilt(match, spec) {
@@ -1068,8 +1084,8 @@ function chooseJob(match, k) {
   }
 
   if (room.type === "garden") {
-    const res = match.mechanics.kitchenChain ? "biomass" : "food";
-    const dest = match.mechanics.kitchenChain
+    const res = gardenResource(match);
+    const dest = res === "biomass"
       ? match.rooms.find((r) => r.type === "kitchen" && r.built && need(match, r, "biomass") >= 1) || match.core
       : match.core;
     if (available(room, res) >= 1 && need(match, dest, res) >= 1) {
@@ -1219,7 +1235,7 @@ function work(match, k, dt) {
     if (k.workTimer > 0.35) release(k);
   } else if (j.kind === "produce") {
     if (room.stunned > 0) return;
-    const resource = room.type === "extractor" ? "mineral" : match.mechanics.kitchenChain ? "biomass" : "food";
+    const resource = room.type === "extractor" ? "mineral" : gardenResource(match);
     const dest = resource === "biomass"
       ? match.rooms.find((r) => r.type === "kitchen" && r.built && !r.dead) || match.core
       : match.core;
@@ -1633,6 +1649,13 @@ function updateRelics(match) {
         const from = match.core.cells[0];
         if (path(match, from.x, from.y, cell.x, cell.y)) {
           relic.linked = true;
+          match.events.push({ type: "relic" });
+          const px = match.layout.ox + (relic.x + 0.5) * match.layout.cell;
+          const py = match.layout.oy + (relic.y + 0.5) * match.layout.cell;
+          emitFx(match, "kiss", px, py, "#e8d9a0");
+          emitFx(match, "pulse", px, py, "#e8d9a0");
+          match.pulse = Math.max(match.pulse, 0.4);
+          match.floats.push({ x: px, y: py, text: "★", life: 0.9, t: 0, color: "food" });
           break;
         }
       }
@@ -1674,11 +1697,36 @@ function scoreStars(match) {
   match.stars = s;
 }
 
+function cookRations(match, dt) {
+  if (match.rooms.some((r) => r.type === "kitchen" && r.built && !r.dead)) return;
+  if ((match.core.stock.biomass || 0) < 1) return;
+  match.rationCook = (match.rationCook || 0) + dt;
+  const sec = 1.2;
+  while (
+    match.rationCook >= sec &&
+    (match.core.stock.biomass || 0) >= 1 &&
+    need(match, match.core, "food") >= 1
+  ) {
+    match.rationCook -= sec;
+    change(match.core.stock, "biomass", -1);
+    addStock(match.core, "food", MEALS_PER_BIO);
+    match.events.push({ type: "cook" });
+    emitFx(match, "pulse", match.core.cx, match.core.cy, "#f0c24a");
+    match.floats.push({ x: match.core.cx, y: match.core.cy, text: "+", life: 0.7, t: 0, color: "food" });
+  }
+}
+
 function eat(match, dt) {
   if (match.eatRate <= 0) return;
+  cookRations(match, dt);
   const n = match.kapsels.length;
   match.core.stock.food = Math.max(0, (match.core.stock.food || 0) - match.eatRate * n * dt);
   if ((match.core.stock.food || 0) <= 0) {
+    cookRations(match, 0);
+    if ((match.core.stock.food || 0) > 0) {
+      match.starve = Math.max(0, match.starve - dt * 2);
+      return;
+    }
     match.starve += dt;
     if (match.starve >= 9 && match.kapsels.length) {
       match.starve = 0;
@@ -1783,6 +1831,13 @@ export function coachText(match) {
   }
   const needRelics = (match.win && match.win.relics) || 0;
   const linked = match.relics.filter((r) => r.linked).length;
+  if (needRelics && linked < needRelics && match.mechanics.kitchenChain) {
+    const garden = hasJob(match, "garden");
+    const kitchenOk = !((match.level.allowed || []).includes("kitchen")) || hasJob(match, "kitchen");
+    if (!garden || !kitchenOk) {
+      return "Garden and kitchen before monuments. Relics do not feed anyone.";
+    }
+  }
   if (needRelics && linked < needRelics) {
     return "Kiss the four monuments. One I off the plus. Two dashed rooms is a jam.";
   }

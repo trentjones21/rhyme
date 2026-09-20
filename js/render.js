@@ -146,9 +146,14 @@ function drawRoomGlow(ctx, match, now) {
     if (!room.built || room.dead) continue;
     const staff = match.kapsels.some((k) => k.assignment === room.id);
     const a = room.type === "core" ? 0.16 : staff ? 0.11 : 0.05;
-    ctx.fillStyle = room.type === "core"
-      ? `rgba(243,240,232,${0.1 + Math.sin(now * 0.003) * 0.04})`
-      : `rgba(243,240,232,${a})`;
+    if (room.type === "garden") ctx.fillStyle = `rgba(94,168,106,${0.1 + Math.sin(now * 0.004) * 0.04})`;
+    else if (room.type === "kitchen") ctx.fillStyle = `rgba(240,194,74,${0.1 + Math.sin(now * 0.005) * 0.04})`;
+    else if (room.type === "gate") ctx.fillStyle = `rgba(155,122,212,${0.12 + Math.sin(now * 0.006 + room.id) * 0.05})`;
+    else {
+      ctx.fillStyle = room.type === "core"
+        ? `rgba(243,240,232,${0.1 + Math.sin(now * 0.003) * 0.04})`
+        : `rgba(243,240,232,${a})`;
+    }
     ctx.beginPath();
     ctx.arc(room.cx, room.cy, match.layout.cell * (room.type === "core" ? 2.1 : 1.15), 0, Math.PI * 2);
     ctx.fill();
@@ -210,9 +215,20 @@ function drawTerrain(ctx, match, now) {
     }
   }
   for (const relic of match.relics) {
+    relicHalo(ctx, match, relic, now);
+  }
+}
+
+function relicHalo(ctx, match, relic, now) {
     const r = cellRect(match, relic.x, relic.y, 7);
     const cx = r.x + r.w / 2;
     const cy = r.y + r.h / 2;
+    const hum = 0.1 + Math.sin(now * 0.004 + relic.x) * 0.05;
+    ctx.strokeStyle = relic.linked ? `rgba(232,217,160,${0.35 + hum})` : `rgba(180,190,210,${0.16 + hum})`;
+    ctx.lineWidth = relic.linked ? 2 : 1.2;
+    ctx.beginPath();
+    ctx.arc(cx, cy + 2, 16 + Math.sin(now * 0.003 + relic.y) * 2, 0, Math.PI * 2);
+    ctx.stroke();
     if (relic.linked) {
       ctx.fillStyle = `rgba(232,217,160,${0.12 + Math.sin(now * 0.005) * 0.06})`;
       ctx.beginPath();
@@ -237,7 +253,28 @@ function drawTerrain(ctx, match, now) {
       ctx.strokeStyle = "rgba(232,217,160,0.55)";
       ctx.stroke();
     }
-  }
+}
+
+function gateFold(ctx, now, room) {
+  const spin = now * 0.003 + room.id;
+  ctx.strokeStyle = `rgba(196,170,240,${0.55 + Math.sin(now * 0.006) * 0.2})`;
+  ctx.strokeRect(-6, -6, 12, 12);
+  ctx.beginPath();
+  ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.save();
+  ctx.rotate(spin);
+  ctx.beginPath();
+  ctx.moveTo(-5, 0);
+  ctx.lineTo(5, 0);
+  ctx.moveTo(0, -5);
+  ctx.lineTo(0, 5);
+  ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = `rgba(155,122,212,${0.28 + Math.sin(now * 0.008 + room.id) * 0.12})`;
+  ctx.beginPath();
+  ctx.arc(0, 0, 9 + Math.sin(now * 0.004) * 1.5, 0, Math.PI * 2);
+  ctx.stroke();
 }
 
 function drawScanCones(ctx, match, now) {
@@ -402,13 +439,7 @@ function drawRooms(ctx, match, now) {
         ctx.arc(0, 0, 4, 0, Math.PI * 2);
         ctx.stroke();
       } else if (room.type === "gate") {
-        ctx.strokeRect(-6, -6, 12, 12);
-        ctx.beginPath();
-        ctx.moveTo(-3, 0);
-        ctx.lineTo(3, 0);
-        ctx.moveTo(0, -3);
-        ctx.lineTo(0, 3);
-        ctx.stroke();
+        gateFold(ctx, now, room);
       } else if (room.type === "heater") {
         ctx.beginPath();
         ctx.moveTo(0, 6);
@@ -684,6 +715,17 @@ function drawFx(ctx, match, now) {
         ctx.arc(f.x + Math.cos(ang) * r, f.y + Math.sin(ang) * r, 1.8 * a, 0, Math.PI * 2);
         ctx.fill();
       }
+    } else if (f.kind === "kiss") {
+      ctx.strokeStyle = f.hue || "#e8d9a0";
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 6 + f.t * 38, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(232,217,160,${0.45 * a})`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 14 + f.t * 22, 0, Math.PI * 2);
+      ctx.stroke();
     } else if (f.kind === "pulse") {
       ctx.strokeStyle = f.hue || "#f3f0e8";
       ctx.lineWidth = 2;
