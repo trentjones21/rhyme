@@ -585,7 +585,7 @@ export const LEVELS = [
       { x: 4, y: 2 },
       { x: 4, y: 10 },
     ],
-    wells: [{ x: 4, y: 0, strength: 48 }],
+    wells: [{ x: 7, y: 5, strength: 48 }],
     mechanics: {
       cloak: true,
       cloakAll: true,

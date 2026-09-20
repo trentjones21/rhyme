@@ -242,11 +242,11 @@ function drawShieldAuras(ctx, match, now) {
     ctx.strokeStyle = `rgba(110,195,201,${0.22 + pulse})`;
     ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.arc(room.cx, room.cy, match.layout.cell * 2.85 + Math.sin(now * 0.003) * 2, 0, Math.PI * 2);
+    ctx.arc(room.cx, room.cy, match.layout.cell * 4.2 + Math.sin(now * 0.003) * 2, 0, Math.PI * 2);
     ctx.stroke();
     ctx.fillStyle = `rgba(110,195,201,${0.05 + pulse * 0.4})`;
     ctx.beginPath();
-    ctx.arc(room.cx, room.cy, match.layout.cell * 2.5, 0, Math.PI * 2);
+    ctx.arc(room.cx, room.cy, match.layout.cell * 3.6, 0, Math.PI * 2);
     ctx.fill();
   }
 }

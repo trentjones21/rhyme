@@ -68,6 +68,17 @@ describe("Last Geometry is a finale, not a trap", () => {
     }
   });
 
+  it("parks the gravity well on the hull, not in the north void", () => {
+    const last = levelById("7-06");
+    const core = last.core || { x: 4, y: 6 };
+    assert.ok(last.wells.length >= 1, "finale still has a well");
+    for (const w of last.wells) {
+      const man = Math.abs(w.x - core.x) + Math.abs(w.y - core.y);
+      assert.ok(man >= 2, `well ${w.x},${w.y} sits on the plus`);
+      assert.ok(man <= 4, `well ${w.x},${w.y} is ${man} from core — scouts park in the void`);
+    }
+  });
+
   it("sits monuments one I off the plus, not in true corners", () => {
     const last = levelById("7-06");
     const core = last.core || { x: 4, y: 6 };
@@ -83,6 +94,59 @@ describe("Last Geometry is a finale, not a trap", () => {
       assert.ok(man >= 3, `relic ${r.x},${r.y} hugs the core`);
       assert.ok(man <= 4, `relic ${r.x},${r.y} is ${man} from the plus`);
     }
+  });
+
+  it("keeps a surveyed relic linked after scouts chew the road", () => {
+    const m = createMatch(levelById("7-06"), { seed: 11 });
+    assert.equal(surveyRelics(m), 4);
+    const road = m.rooms.find((r) => r.type === "corridor" && r.built);
+    assert.ok(road);
+    setTool(m, "salvage");
+    tapCell(m, road.cells[0].x, road.cells[0].y);
+    step(m, 0.05);
+    assert.equal(m.relics.filter((r) => r.linked).length, 4);
+  });
+
+  it("lets a core scanner see cloaked scouts on a monument arm", () => {
+    const m = createMatch(levelById("7-06"), { seed: 11 });
+    setTool(m, "scanner");
+    let landed = false;
+    for (let rot = 0; rot < 4 && !landed; rot++) {
+      m.rot = rot;
+      for (let y = 0; y < m.rows && !landed; y++) {
+        for (let x = 0; x < m.cols && !landed; x++) {
+          if (canPlace(m, "scanner", x, y, rot) && tapCell(m, x, y)) landed = true;
+        }
+      }
+    }
+    assert.equal(landed, true);
+    tick(m, 12);
+    const scanner = m.rooms.find((r) => r.type === "scanner" && r.built);
+    assert.ok(scanner, "scanner never built");
+    setTool(m, "assign");
+    tapCell(m, scanner.cells[0].x, scanner.cells[0].y);
+    tick(m, 2);
+    const relic = levelById("7-06").relics[0];
+    const L = m.layout;
+    m.enemies.push({
+      x: L.ox + (relic.x + 0.5) * L.cell,
+      y: L.oy + (relic.y + 0.5) * L.cell,
+      hp: 20,
+      maxhp: 20,
+      speed: 0,
+      dps: 0,
+      r: 8,
+      cloaked: true,
+      vx: 0,
+      vy: 0,
+      dir: 0,
+      target: null,
+      state: "walking",
+      hitTimer: 0,
+      wobble: 0,
+    });
+    step(m, 0.05);
+    assert.equal(m.enemies[0].cloaked, false, "scanner cannot see the relic arm");
   });
 
   it("lets a surveyor kiss all four relics with the opening mineral bank", () => {

@@ -180,12 +180,12 @@ const RECRUITS_PER_Q = 2;
 const STOCK_CAP = 8;
 const PANTRY_CAP = 24;
 const CORE_MINERAL_CAP = 36;
-const TURRET_RANGE = 132;
+const TURRET_RANGE = 190;
 const TURRET_CD = 1.05;
 const TURRET_DMG = 12;
-const SHIELD_R = 2.85;
+const SHIELD_R = 4.2;
 const HEATER_R = 3.3;
-const SCAN_R = 110;
+const SCAN_R = 200;
 const OVERCLOCK_SEC = 5;
 const OVERCLOCK_HURT = 9;
 
@@ -1612,6 +1612,7 @@ function updateOverclock(match, dt) {
 
 function updateRelics(match) {
   for (const relic of match.relics) {
+    if (relic.linked) continue;
     const dirs = [
       [0, 0],
       [1, 0],
@@ -1619,7 +1620,6 @@ function updateRelics(match) {
       [0, 1],
       [0, -1],
     ];
-    relic.linked = false;
     for (const [dx, dy] of dirs) {
       const cell = match.grid.get(key(relic.x + dx, relic.y + dy));
       if (cell && cell.room.built) {
