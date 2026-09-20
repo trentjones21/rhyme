@@ -7,8 +7,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#07080d" />
+    <meta name="apple-mobile-web-app-title" content="Rhyme" />
     <title>Rhyme</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2307080d'/%3E%3Crect x='6' y='2' width='4' height='4' fill='%238d6b4a'/%3E%3Crect x='2' y='6' width='4' height='4' fill='%235ea86a'/%3E%3Crect x='6' y='6' width='4' height='4' fill='%233c445c'/%3E%3Crect x='10' y='6' width='4' height='4' fill='%23d56b8c'/%3E%3Crect x='6' y='10' width='4' height='4' fill='%238d6b4a'/%3E%3C/svg%3E" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="css/rhyme.css" />
   </head>
   <body>
@@ -80,6 +83,8 @@
             </div>
             <button id="speed" aria-label="Speed">1×</button>
           </div>
+          <div id="jobs" class="jobs" aria-label="Kapsel jobs"></div>
+          <div id="bag" class="bag" hidden></div>
           <div id="stagewrap">
             <canvas id="stage"></canvas>
             <div id="hint"></div>
@@ -132,11 +137,15 @@
               <h3>Hold</h3>
               <p>Waves come from the void. Weapons are mute until staffed. New worlds add flares, relics, gates, ice, cloaks, gravity, and overclocks — each taught in the station that introduces it.</p>
             </article>
+            <article>
+              <h3>The bag</h3>
+              <p>Late stations deal a random tetromino. You still pick the room’s job. Rotate, then place that shape. Add to Home Screen on iPhone for a portrait shell with haptics.</p>
+            </article>
           </div>
         </section>
       </div>
       <div id="homebar"></div>
     </div>
-    <script type="module" src="js/app.js?v=4"></script>
+    <script type="module" src="js/app.js?v=5"></script>
   </body>
 </html>

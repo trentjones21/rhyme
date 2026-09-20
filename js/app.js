@@ -13,9 +13,11 @@ import {
   coreStock,
   canPlace,
   rotateShape,
-  SHAPES,
+  PIECES,
   ROOMS,
   recall,
+  jobChips,
+  playerShape,
 } from "./sim.js";
 import { LEVELS, WORLDS, levelById, nextLevel, levelsInWorld } from "./levels.js";
 import { loadSave, writeSave, completeLevel, worldUnlocked, campaignStats } from "./save.js";
@@ -44,6 +46,20 @@ function show(name) {
 function buzz(ms) {
   if (navigator.vibrate) navigator.vibrate(ms);
 }
+
+const CHIP_HUE = {
+  wait: "#8d93a3",
+  haul: "#e07898",
+  build: "#8d6b4a",
+  grow: "#5ea86a",
+  mine: "#d56b8c",
+  cook: "#f0c24a",
+  berth: "#d4844a",
+  gun: "#7b88a3",
+  heat: "#e07a4a",
+  scan: "#70b4e0",
+  walk: "#c8c2b4",
+};
 
 function renderTitle() {
   const st = campaignStats(save, LEVELS);
@@ -106,12 +122,14 @@ function startLevel(level) {
   $("speed").textContent = "1×";
   $("pauseOv").classList.remove("on");
   $("endOv").classList.remove("on");
+  $("play").classList.remove("ended");
   match = createMatch(level, { seed: (Date.now() % 9999) + 1 });
   show("play");
   buildTools();
   resize();
   $("hint").textContent = level.hint || level.lesson || "";
   $("hint").classList.toggle("on", !!(level.hint || level.lesson));
+  $("hint").classList.remove("lesson");
   audio.play("place");
 }
 
@@ -142,11 +160,13 @@ function buildTools() {
     const hue = ROOMS[tool] ? ROOMS[tool].hue : tool === "assign" ? "#f3f0e8" : "#e24b52";
     b.innerHTML = `<span class="swatch" style="background:${hue}"></span>${labels[tool] || tool}`;
     b.onclick = () => {
+      if (match.tutorial && match.tutorial.needAssign && tool !== "assign") return;
       setTool(match, tool);
-      for (const c of el.children) c.classList.toggle("on", c.dataset.tool === tool);
+      for (const c of el.children) c.classList.toggle("on", c.dataset.tool === match.tool);
       audio.play("tap");
       buzz(8);
     };
+    if (match.tutorial && match.tutorial.needAssign && tool !== "assign") b.disabled = true;
     el.appendChild(b);
   }
 }
@@ -169,7 +189,55 @@ function hud() {
     wave.classList.remove("hot");
   }
   $("objective").textContent = objectiveText(match);
-  if (match.time > 7) $("hint").classList.remove("on");
+  renderJobs();
+  renderBag();
+  if (match.tutorial && match.tutorial.needAssign) {
+    $("hint").textContent = "Tap the blueprint to send a kapsel. That is the whole game.";
+    $("hint").classList.add("on", "lesson");
+    if (match.tool !== "assign") {
+      setTool(match, "assign");
+      buildTools();
+    }
+  } else {
+    $("hint").classList.remove("lesson");
+    if (match.tutorial && match.tutorial.assigned && !match.tutorial.unlockedUi) {
+      match.tutorial.unlockedUi = true;
+      buildTools();
+    }
+    if (match.time > 7) $("hint").classList.remove("on");
+  }
+}
+
+function renderJobs() {
+  const el = $("jobs");
+  if (!el || !match) return;
+  const chips = jobChips(match);
+  el.innerHTML = chips
+    .map((c) => `<span class="chip ${c.id}"><i style="background:${CHIP_HUE[c.id] || "#f3f0e8"}"></i><b>${c.n}</b> ${c.label}</span>`)
+    .join("");
+}
+
+function renderBag() {
+  const el = $("bag");
+  if (!el || !match) return;
+  if (!match.mechanics.pieceQueue || !match.piece) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  el.hidden = false;
+  const cells = (name) => PIECES[name] || [];
+  const mini = (name, next) => {
+    const on = new Set(cells(name).map(([x, y]) => `${x + 1},${y + 1}`));
+    let html = `<div class="mini${next ? " next" : ""}" aria-label="${next ? "Next" : "Now"} ${name}">`;
+    for (let y = 0; y < 4; y++) {
+      for (let x = 0; x < 4; x++) {
+        html += `<b class="${on.has(x + "," + y) ? "on" : ""}"></b>`;
+      }
+    }
+    return html + "</div>";
+  };
+  el.innerHTML = mini(match.piece, false) + (match.queue || []).slice(0, 2).map((n) => mini(n, true)).join("");
 }
 
 function resize() {
@@ -193,12 +261,16 @@ function consumeEvents() {
   if (!match) return;
   for (const ev of match.events) {
     if (ev.type === "place") audio.play("place");
-    if (ev.type === "assign") audio.play("assign");
+    if (ev.type === "assign") {
+      audio.play("assign");
+      buzz(12);
+    }
     if (ev.type === "built") audio.play("built");
     if (ev.type === "wave") {
       audio.play("wave");
       buzz([20, 40, 20]);
     }
+    if (ev.type === "win") buzz([12, 40, 12, 40, 24]);
     if (ev.type === "flare") audio.play("flare");
     if (ev.type === "shoot") audio.play("shoot");
     if (ev.type === "win") audio.play("win");
@@ -217,6 +289,7 @@ function finish() {
     const nxt = nextLevel(chosen.id);
     completeLevel(save, chosen.id, match.stars, nxt && nxt.id);
     writeSave(save);
+    $("play").classList.add("ended");
     $("endTitle").textContent = "Stable";
     $("endBody").textContent = `${"★".repeat(match.stars)}${"☆".repeat(3 - match.stars)}  ·  ${Math.ceil(match.time)}s`;
     $("endPrimary").textContent = nxt ? "Next station" : "Campaign complete";
@@ -229,6 +302,7 @@ function finish() {
     };
   } else {
     audio.play("over");
+    $("play").classList.add("ended");
     $("endTitle").textContent = "Unstitched";
     $("endBody").textContent = match.loseReason || "The station failed.";
     $("endPrimary").textContent = "Retry";
@@ -262,7 +336,7 @@ function onCanvasTap(ev) {
   const y = (ev.clientY ?? (ev.touches && ev.touches[0].clientY)) - rect.top;
   const g = gridAt(match, x, y);
   let ok = tapCell(match, g.x, g.y);
-  if (!ok && SHAPES[match.tool]) {
+  if (!ok && ROOMS[match.tool] && match.tool !== "core") {
     let best = null;
     let bestD = 2;
     for (let yy = 0; yy < match.rows; yy++) {
@@ -289,8 +363,8 @@ function onCanvasMove(ev) {
   const x = pt.clientX - rect.left;
   const y = pt.clientY - rect.top;
   const g = gridAt(match, x, y);
-  if (SHAPES[match.tool]) {
-    const cells = rotateShape(SHAPES[match.tool], match.rot).map(([dx, dy]) => ({ x: g.x + dx, y: g.y + dy }));
+  if (ROOMS[match.tool] && match.tool !== "core") {
+    const cells = rotateShape(playerShape(match, match.tool), match.rot).map(([dx, dy]) => ({ x: g.x + dx, y: g.y + dy }));
     ghost = { cells, ok: canPlace(match, match.tool, g.x, g.y, match.rot) };
   } else ghost = null;
 }

@@ -82,6 +82,7 @@ export function drawWorld(ctx, match, view, now) {
   drawKapsels(ctx, match);
   drawEnemies(ctx, match);
   drawShots(ctx, match);
+  drawFx(ctx, match, now);
   drawGhost(ctx, match, view.ghost);
   drawFloats(ctx, match);
   drawVignette(ctx, match, w, h);
@@ -170,6 +171,7 @@ function drawTerrain(ctx, match, now) {
 function drawRooms(ctx, match, now) {
   for (const room of match.rooms) {
     const color = room.def.hue || "#888";
+    const teach = match.tutorial && match.tutorial.needAssign && match.tutorial.roomId === room.id;
     for (const c of room.cells) {
       const r = cellRect(match, c.x, c.y, 2.4);
       ctx.globalAlpha = room.built ? 1 : 0.28;
@@ -177,14 +179,22 @@ function drawRooms(ctx, match, now) {
       round(ctx, r.x, r.y, r.w, r.h, 5);
       ctx.fill();
       ctx.globalAlpha = 1;
-      ctx.fillStyle = "rgba(255,255,255,0.14)";
-      round(ctx, r.x + 2, r.y + 2, r.w - 4, Math.max(3, r.h * 0.22), 3);
+      ctx.fillStyle = "rgba(12,14,20,0.22)";
+      round(ctx, r.x + 3, r.y + 3, r.w - 6, r.h - 6, 3);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.16)";
+      round(ctx, r.x + 2, r.y + 2, r.w - 4, Math.max(3, r.h * 0.18), 3);
       ctx.fill();
       if (!room.built) {
-        ctx.strokeStyle = "rgba(255,255,255,0.35)";
+        ctx.strokeStyle = teach
+          ? `rgba(232,217,160,${0.55 + Math.sin(now * 0.01) * 0.35})`
+          : "rgba(255,255,255,0.35)";
+        ctx.lineWidth = teach ? 2 : 1;
         ctx.setLineDash([4, 4]);
+        round(ctx, r.x, r.y, r.w, r.h, 5);
         ctx.stroke();
         ctx.setLineDash([]);
+        ctx.lineWidth = 1;
       }
     }
     if (match.selected === room.id) {
@@ -262,6 +272,23 @@ function drawRooms(ctx, match, now) {
         ctx.beginPath();
         ctx.arc(0, 0, 1.6, 0, Math.PI * 2);
         ctx.fill();
+      } else if (room.type === "beacon") {
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos((i * Math.PI) / 2) * 8, Math.sin((i * Math.PI) / 2) * 8);
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (room.type === "corridor") {
+        ctx.beginPath();
+        ctx.moveTo(-5, 0);
+        ctx.lineTo(5, 0);
+        ctx.moveTo(0, -5);
+        ctx.lineTo(0, 5);
+        ctx.stroke();
       }
       ctx.restore();
     }
@@ -334,6 +361,22 @@ function drawKapsels(ctx, match) {
     ctx.fill();
     ctx.fillStyle = "rgba(20,22,28,0.55)";
     ctx.fillRect(k.x - 2.2, k.y - 4 + bob, 4.4, 2.2);
+    const pip =
+      k.job && k.job.kind === "build"
+        ? "#8d6b4a"
+        : k.job && k.job.kind === "produce" && k.job.target && k.job.target.type === "extractor"
+          ? "#d56b8c"
+          : k.job && k.job.kind === "produce"
+            ? "#5ea86a"
+            : k.job && k.job.kind === "staff"
+              ? "#7b88a3"
+              : k.job && k.job.kind === "cook"
+                ? "#f0c24a"
+                : null;
+    if (pip) {
+      ctx.fillStyle = pip;
+      ctx.fillRect(k.x + 3.2, k.y - 9 + bob, 3.2, 3.2);
+    }
     if (k.carry) {
       const col = k.carry === "mineral" ? "#e07898" : k.carry === "food" ? "#f0c24a" : "#6fbf6a";
       ctx.fillStyle = col;
@@ -370,11 +413,49 @@ function drawEnemies(ctx, match) {
 }
 
 function drawShots(ctx, match) {
-  ctx.fillStyle = "#f3f0e8";
   for (const s of match.shots) {
+    ctx.strokeStyle = "rgba(243,240,232,0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    const dx = s.target ? s.target.x - s.x : 0;
+    const dy = s.target ? s.target.y - s.y : 0;
+    const d = Math.hypot(dx, dy) || 1;
+    ctx.lineTo(s.x - (dx / d) * 10, s.y - (dy / d) * 10);
+    ctx.stroke();
+    ctx.fillStyle = "#f3f0e8";
     ctx.beginPath();
     ctx.arc(s.x, s.y, 2.4, 0, Math.PI * 2);
     ctx.fill();
+  }
+}
+
+function drawFx(ctx, match, now) {
+  for (const f of match.fx) {
+    const a = Math.max(0, 1 - f.t / f.life);
+    ctx.globalAlpha = a;
+    if (f.kind === "spark") {
+      ctx.strokeStyle = f.hue || "#f3f0e8";
+      ctx.lineWidth = 1.4;
+      for (let i = 0; i < 6; i++) {
+        const ang = (i * Math.PI) / 3 + f.t * 9;
+        const r = 5 + f.t * 26;
+        ctx.beginPath();
+        ctx.moveTo(f.x, f.y);
+        ctx.lineTo(f.x + Math.cos(ang) * r, f.y + Math.sin(ang) * r);
+        ctx.stroke();
+      }
+    } else {
+      ctx.fillStyle = f.hue || "#f3f0e8";
+      for (let i = 0; i < 5; i++) {
+        const ang = (i / 5) * Math.PI * 2 + now * 0.002;
+        const r = 4 + f.t * 14;
+        ctx.beginPath();
+        ctx.arc(f.x + Math.cos(ang) * r, f.y + Math.sin(ang) * r, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
   }
 }
 
