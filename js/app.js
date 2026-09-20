@@ -194,10 +194,9 @@ function hud() {
   if (match.tutorial && match.tutorial.needAssign) {
     $("hint").textContent = "Tap the blueprint to send a kapsel. That is the whole game.";
     $("hint").classList.add("on", "lesson");
-    if (match.tool !== "assign") {
-      setTool(match, "assign");
-      buildTools();
-    }
+    if (match.tool !== "assign") setTool(match, "assign");
+    const on = document.querySelector("#tools .tool.on");
+    if (!on || on.dataset.tool !== "assign") buildTools();
   } else {
     $("hint").classList.remove("lesson");
     if (match.tutorial && match.tutorial.assigned && !match.tutorial.unlockedUi) {
