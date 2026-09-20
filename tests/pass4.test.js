@@ -149,6 +149,14 @@ describe("Last Geometry is a finale, not a trap", () => {
     assert.equal(m.enemies[0].cloaked, false, "scanner cannot see the relic arm");
   });
 
+  it("puts scan, gun, and aegis on the first thumb row of Last Geometry", () => {
+    const a = levelById("7-06").allowed;
+    assert.ok(a.indexOf("scanner") >= 0);
+    assert.ok(a.indexOf("scanner") <= 2, a.indexOf("scanner"));
+    assert.ok(a.indexOf("weapons") <= 3, a.indexOf("weapons"));
+    assert.ok(a.indexOf("shield") <= 4, a.indexOf("shield"));
+  });
+
   it("lets a surveyor kiss all four relics with the opening mineral bank", () => {
     const m = createMatch(levelById("7-06"), { seed: 11 });
     const startMin = coreStock(m, "mineral");
