@@ -714,15 +714,20 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
         $("speed").textContent = speed + "×";
         $("speed").classList.remove("go");
       }
+      let lastBeat = 0;
       const tick = () => {
         if (!match || match.status !== "playing") {
           this._finale = 0;
           return;
         }
-        captainBeat(match);
-        if (!match.thinkLocked && speed !== (mult || 3)) {
-          speed = mult || 3;
-          $("speed").textContent = speed + "×";
+        const now = performance.now();
+        if (now - lastBeat >= 420) {
+          lastBeat = now;
+          captainBeat(match);
+          if (!match.thinkLocked && speed !== (mult || 3)) {
+            speed = mult || 3;
+            $("speed").textContent = speed + "×";
+          }
         }
         this._finale = requestAnimationFrame(tick);
       };

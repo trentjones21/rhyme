@@ -1886,6 +1886,10 @@ export function captainBeat(match) {
   if (allowed.has("shield") && !hasJob(match, "shield") && (need.rooms?.shield || match.mechanics.flares)) {
     return placeBest(match, "shield", scoreNearCoreCells);
   }
+  if (allowed.has("garden") && !hasJob(match, "garden")) return placeBest(match, "garden", scoreNearCoreCells);
+  if (match.mechanics.kitchenChain && allowed.has("kitchen") && !hasJob(match, "kitchen")) {
+    return placeBest(match, "kitchen", scoreNearCoreCells);
+  }
   if (need.relics && match.relics.filter((r) => r.linked).length < need.relics) {
     const spots = match.relics.filter((r) => !r.linked);
     if (placeBest(match, "corridor", (_, cells) => scoreTowardSpots(cells, spots))) return true;
@@ -1899,10 +1903,6 @@ export function captainBeat(match) {
       });
       return placeBest(match, "heater", (_, cells) => scoreTowardSpots(cells, ice));
     }
-  }
-  if (allowed.has("garden") && !hasJob(match, "garden")) return placeBest(match, "garden", scoreNearCoreCells);
-  if (match.mechanics.kitchenChain && allowed.has("kitchen") && !hasJob(match, "kitchen")) {
-    return placeBest(match, "kitchen", scoreNearCoreCells);
   }
   if (need.rooms?.gate && match.rooms.filter((r) => r.type === "gate" && !r.dead).length < need.rooms.gate) {
     return placeBest(match, "gate", scoreNearCoreCells);
