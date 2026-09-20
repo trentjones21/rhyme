@@ -392,7 +392,8 @@ html.standalone .install { display: none !important; }
   gap: 10px;
 }
 .overlay.on { display: flex; }
-.overlay h2 { margin: 0 0 6px; font-size: 32px; letter-spacing: 0.08em; }
+.overlay [hidden] { display: none !important; }
+.overlay h2 { margin: 0 0 6px; font-size: 32px; letter-spacing: 0.08em; text-shadow: 0 0 24px rgba(243,240,232,0.16); }
 .overlay p { margin: 0 0 12px; color: var(--muted); }
 
 #play.ended #hud,

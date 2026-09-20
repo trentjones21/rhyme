@@ -402,7 +402,7 @@ export const LEVELS = [
     mechanics: {
       wormholes: true,
       kitchenChain: true,
-      flares: { first: 18, interval: 18, damage: 11, telegraph: 2.6 },
+      flares: { first: 24, interval: 18, damage: 11, telegraph: 2.6 },
       pieceQueue: true,
     },
     allowed: ["corridor", "gate", "weapons", "shield", "garden", "kitchen", "extractor", "quarters"],
@@ -498,8 +498,8 @@ export const LEVELS = [
     briefing: "Two waves, frost on the rim, a fold is legal if you earned it in world five. Use a heater.",
     start: { minerals: 28, food: 12, crew: 5 },
     ice: [
-      { x: 0, y: 6 }, { x: 1, y: 6 }, { x: 7, y: 6 }, { x: 8, y: 6 },
-      { x: 4, y: 1 }, { x: 4, y: 2 }, { x: 4, y: 10 }, { x: 4, y: 11 },
+      { x: 2, y: 6 }, { x: 3, y: 6 }, { x: 5, y: 6 }, { x: 6, y: 6 },
+      { x: 4, y: 3 }, { x: 4, y: 4 }, { x: 4, y: 8 }, { x: 4, y: 9 },
     ],
     deposits: [{ x: 0, y: 11 }],
     mechanics: { wormholes: true, kitchenChain: true, pieceQueue: true },

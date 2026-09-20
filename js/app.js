@@ -25,6 +25,7 @@ import { loadSave, writeSave, completeLevel, worldUnlocked, campaignStats } from
 import { drawWorld } from "./render.js";
 import * as audio from "./audio.js";
 import { shouldShowInstallHint } from "./install.js";
+import { endOverlaySpec } from "./overlay.js";
 
 const $ = (id) => document.getElementById(id);
 const screens = ["title", "worlds", "levels", "brief", "play", "how"];
@@ -137,6 +138,7 @@ function startLevel(level) {
   $("speed").textContent = "1×";
   $("pauseOv").classList.remove("on");
   $("endOv").classList.remove("on");
+  $("endRetry").hidden = false;
   $("play").classList.remove("ended");
   match = createMatch(level, { seed: (Date.now() % 9999) + 1 });
   show("play");
@@ -351,14 +353,16 @@ function finish() {
   ended = true;
   const ov = $("endOv");
   ov.classList.add("on");
+  $("play").classList.add("ended");
+  const nxt = match.status === "won" ? nextLevel(chosen.id) : null;
+  const spec = endOverlaySpec(match.status, { hasNext: !!nxt });
+  $("endTitle").textContent = spec.title;
+  $("endPrimary").textContent = spec.primary;
+  $("endRetry").hidden = !spec.retry;
   if (match.status === "won") {
-    const nxt = nextLevel(chosen.id);
     completeLevel(save, chosen.id, match.stars, nxt && nxt.id);
     writeSave(save);
-    $("play").classList.add("ended");
-    $("endTitle").textContent = "Stable";
     $("endBody").textContent = `${"★".repeat(match.stars)}${"☆".repeat(3 - match.stars)}  ·  ${Math.ceil(match.time)}s`;
-    $("endPrimary").textContent = nxt ? "Next station" : "Campaign complete";
     $("endPrimary").onclick = () => {
       if (nxt) openBrief(nxt);
       else {
@@ -368,10 +372,7 @@ function finish() {
     };
   } else {
     audio.play("over");
-    $("play").classList.add("ended");
-    $("endTitle").textContent = "Unstitched";
     $("endBody").textContent = match.loseReason || "The station failed.";
-    $("endPrimary").textContent = "Retry";
     $("endPrimary").onclick = () => startLevel(chosen);
   }
 }
@@ -569,3 +570,15 @@ if ("serviceWorker" in navigator) {
 renderTitle();
 syncInstallSheet();
 requestAnimationFrame(loop);
+
+if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+  window.__rhyme = {
+    getMatch: () => match,
+    setTool: (t) => match && setTool(match, t),
+    tapCell: (x, y) => match && tapCell(match, x, y),
+    setSpeed(n) {
+      speed = n;
+      $("speed").textContent = n + "×";
+    },
+  };
+}

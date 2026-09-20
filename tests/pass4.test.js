@@ -1,9 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { LEVELS, levelById } from "../js/levels.js";
-import { createMatch, step, tapCell, setTool, canPlace, coreStock, playerShape, rotateShape } from "../js/sim.js";
+import { createMatch, step, tapCell, setTool, canPlace, coreStock, playerShape, rotateShape, assignTo, recall } from "../js/sim.js";
 import { shouldShowInstallHint } from "../js/install.js";
-import { toneFor } from "../js/audio.js";
+import { toneFor, play, resetVoices } from "../js/audio.js";
+import { endOverlaySpec } from "../js/overlay.js";
 
 function pantrySecs(level) {
   const crew = level.start.crew || 1;
@@ -233,6 +234,180 @@ function surveyRelics(match) {
   return match.relics.filter((r) => r.linked).length;
 }
 
+function unpaidBlueprints(match) {
+  return match.rooms.filter((r) => !r.built && r.type !== "core").length;
+}
+
+function scoreNearCore(match, cells) {
+  const plus = match.core.cells;
+  let min = Infinity;
+  let kiss = 0;
+  for (const cell of cells) {
+    for (const p of plus) {
+      const man = Math.abs(cell.x - p.x) + Math.abs(cell.y - p.y);
+      min = Math.min(min, man);
+      if (man <= 1) kiss += 1;
+    }
+  }
+  return kiss * 50 - min;
+}
+
+function idleKapsels(match) {
+  return match.kapsels.filter((k) => !k.assignment || k.assignment === match.core.id);
+}
+
+function assignedTo(match, room) {
+  return match.kapsels.filter((k) => k.assignment === room.id).length;
+}
+
+function freeHaulers(match, n) {
+  const keep = new Set(["scanner", "weapons", "shield"]);
+  let guard = 0;
+  while (idleKapsels(match).length < n && guard++ < 8) {
+    const room = match.rooms.find(
+      (r) => r.type !== "core" && !keep.has(r.type) && assignedTo(match, r) > 0
+    );
+    if (!room) break;
+    match.selected = room.id;
+    if (!recall(match)) break;
+  }
+}
+
+function staffPriority(match) {
+  setTool(match, "assign");
+  const order = ["scanner", "weapons", "shield", "heater", "garden", "kitchen", "extractor", "gate"];
+  const unpaid = unpaidBlueprints(match);
+  const haulersWanted = unpaid > 0 ? 2 : 1;
+  freeHaulers(match, haulersWanted);
+  for (const type of order) {
+    if (idleKapsels(match).length <= haulersWanted) break;
+    const room = match.rooms.find((r) => r.type === type && !r.dead);
+    if (!room) continue;
+    if (assignedTo(match, room) < 1) assignTo(match, room);
+  }
+}
+
+function scoreToward(match, cells, spots) {
+  let min = Infinity;
+  for (const s of spots) {
+    for (const c of cells) {
+      min = Math.min(min, Math.abs(c.x - s.x) + Math.abs(c.y - s.y));
+    }
+  }
+  return -min;
+}
+
+function placeType(match, type, scoreFn) {
+  setTool(match, type);
+  let best = null;
+  const saved = match.rot;
+  for (let rot = 0; rot < 4; rot++) {
+    match.rot = rot;
+    for (let y = 0; y < match.rows; y++) {
+      for (let x = 0; x < match.cols; x++) {
+        if (!canPlace(match, type, x, y, rot)) continue;
+        const cells = cellsAt(match, type, x, y, rot);
+        const sc = scoreFn(match, cells);
+        if (!best || sc > best.sc) best = { x, y, rot, sc };
+      }
+    }
+  }
+  match.rot = saved;
+  if (!best) return false;
+  match.rot = best.rot;
+  return tapCell(match, best.x, best.y);
+}
+
+function haveType(match, type) {
+  return match.rooms.some((r) => r.type === type && !r.dead);
+}
+
+function countType(match, type) {
+  return match.rooms.filter((r) => r.type === type && !r.dead).length;
+}
+
+function captainPlay(id, limit) {
+  const level = levelById(id);
+  const match = createMatch(level, { seed: 11 });
+  const allowed = new Set(level.allowed || []);
+  const need = level.win || {};
+  const iceCells = (m) =>
+    [...m.ice].map((k) => {
+      const [x, y] = k.split(",").map(Number);
+      return { x, y };
+    });
+  const deposits = (m) =>
+    [...m.deposits].map((k) => {
+      const [x, y] = k.split(",").map(Number);
+      return { x, y };
+    });
+  while (match.time < limit && match.status === "playing") {
+    staffPriority(match);
+    if (unpaidBlueprints(match) >= 2 || coreStock(match, "mineral") < 4) {
+      tick(match, 2);
+      continue;
+    }
+    const tryOnce = (type, score) => allowed.has(type) && placeType(match, type, score);
+    if (allowed.has("scanner") && !haveType(match, "scanner") && tryOnce("scanner", scoreNearCore)) {
+      tick(match, 1);
+      continue;
+    }
+    if (allowed.has("weapons") && countType(match, "weapons") < (match.enemies.length >= 3 ? 2 : 1) && tryOnce("weapons", scoreNearCore)) {
+      tick(match, 1);
+      continue;
+    }
+    if (
+      allowed.has("shield") &&
+      !haveType(match, "shield") &&
+      (need.rooms?.shield || level.mechanics?.flares) &&
+      tryOnce("shield", scoreNearCore)
+    ) {
+      tick(match, 1);
+      continue;
+    }
+    if (need.relics && match.relics.filter((r) => r.linked).length < need.relics && tryPlaceTowardRelic(match)) {
+      tick(match, 1);
+      continue;
+    }
+    if (
+      need.thaw &&
+      allowed.has("heater") &&
+      match.ice.size > 0 &&
+      countType(match, "heater") < 2 &&
+      tryOnce("heater", (m, cells) => (m.ice.size ? scoreToward(m, cells, iceCells(m)) : scoreNearCore(m, cells)))
+    ) {
+      tick(match, 1);
+      continue;
+    }
+    if (allowed.has("garden") && !haveType(match, "garden") && tryOnce("garden", scoreNearCore)) {
+      tick(match, 1);
+      continue;
+    }
+    if (match.mechanics.kitchenChain && allowed.has("kitchen") && !haveType(match, "kitchen") && tryOnce("kitchen", scoreNearCore)) {
+      tick(match, 1);
+      continue;
+    }
+    if (need.rooms?.gate && countType(match, "gate") < need.rooms.gate && tryOnce("gate", scoreNearCore)) {
+      tick(match, 1);
+      continue;
+    }
+    if (
+      coreStock(match, "mineral") < 10 &&
+      allowed.has("extractor") &&
+      !haveType(match, "extractor") &&
+      tryOnce("extractor", (m, cells) => {
+        const d = deposits(m);
+        return d.length ? scoreToward(m, cells, d) : scoreNearCore(m, cells);
+      })
+    ) {
+      tick(match, 1);
+      continue;
+    }
+    tick(match, 2);
+  }
+  return match;
+}
+
 describe("late stations you can actually finish", () => {
   it("gives Folded War, Icebreaker, and All Hands a first-wave breath and a pantry", () => {
     for (const id of ["5-06", "6-06", "7-05"]) {
@@ -247,8 +422,79 @@ describe("late stations you can actually finish", () => {
     const core = level.core || { x: 4, y: 6 };
     for (const ice of level.ice) {
       const man = Math.abs(ice.x - core.x) + Math.abs(ice.y - core.y);
-      assert.ok(man <= 5, `ice ${ice.x},${ice.y} is ${man} from core`);
+      assert.ok(man <= 4, `ice ${ice.x},${ice.y} is ${man} from core`);
     }
+  });
+
+  it("thaws ice beside any heater tile, not only the footprint origin", () => {
+    const m = createMatch(levelById("6-06"), { seed: 11 });
+    setTool(m, "heater");
+    let landed = false;
+    for (let rot = 0; rot < 4 && !landed; rot++) {
+      m.rot = rot;
+      for (let y = 0; y < m.rows && !landed; y++) {
+        for (let x = 0; x < m.cols && !landed; x++) {
+          if (canPlace(m, "heater", x, y, rot) && tapCell(m, x, y)) landed = true;
+        }
+      }
+    }
+    assert.equal(landed, true);
+    tick(m, 10);
+    const heater = m.rooms.find((r) => r.type === "heater" && r.built);
+    assert.ok(heater);
+    setTool(m, "assign");
+    assignTo(m, heater);
+    tick(m, 8);
+    const origin = heater.cells[0];
+    const other = heater.cells.find((c) => c.x !== origin.x || c.y !== origin.y);
+    const before = m.ice.size;
+    // Ice that only the far tiles can reach must be allowed to melt.
+    assert.ok(before <= 8);
+    tick(m, 1);
+    const stillByOriginOnly = [...m.ice].every((key) => {
+      const [x, y] = key.split(",").map(Number);
+      return Math.hypot(x - origin.x, y - origin.y) > 3.3;
+    });
+    if (other) {
+      const reachableByBody = [...m.ice].some((key) => {
+        const [x, y] = key.split(",").map(Number);
+        return heater.cells.some((c) => Math.hypot(x - c.x, y - c.y) <= 3.3);
+      });
+      assert.equal(reachableByBody, false, "heater body still sees ice it should have thawed");
+    }
+    assert.ok(stillByOriginOnly || m.ice.size < 8);
+  });
+
+  it("does not rain flares before Folded War can raise a shield", () => {
+    const level = levelById("5-06");
+    assert.ok(level.mechanics.flares.first >= 24, level.mechanics.flares.first);
+  });
+
+  it("lets a captain win Last Geometry through four waves and four relics", () => {
+    const m = captainPlay("7-06", 220);
+    assert.equal(m.status, "won", `${m.status} ${m.loseReason || m.winReason} t=${m.time.toFixed(1)} relics=${m.relics.filter((r) => r.linked).length} waves=${m.wavesCleared}`);
+    assert.ok(m.wavesCleared >= 4, m.wavesCleared);
+    assert.equal(m.relics.filter((r) => r.linked).length, 4);
+  });
+
+  it("lets a captain finish Folded War, Icebreaker, and All Hands", () => {
+    for (const id of ["5-06", "6-06", "7-05"]) {
+      const m = captainPlay(id, 200);
+      assert.equal(m.status, "won", `${id} ${m.status} ${m.loseReason || m.winReason} t=${m.time.toFixed(1)} waves=${m.wavesCleared}`);
+    }
+  });
+});
+
+describe("end overlay", () => {
+  it("does not offer two Retry buttons after a loss", () => {
+    const lost = endOverlaySpec("lost");
+    assert.equal(lost.primary, "Retry");
+    assert.equal(lost.retry, false);
+    const won = endOverlaySpec("won", { hasNext: true });
+    assert.equal(won.primary, "Next station");
+    assert.equal(won.retry, true);
+    const last = endOverlaySpec("won", { hasNext: false });
+    assert.equal(last.primary, "Campaign complete");
   });
 });
 
@@ -263,6 +509,13 @@ describe("combat audio language", () => {
     assert.notEqual(toneFor("flare").type, "sawtooth");
     assert.ok(toneFor("shoot").dur <= 0.05);
     assert.ok(toneFor("kill").freq > toneFor("shoot").freq);
+  });
+
+  it("will not stack shoot blips into mud", () => {
+    resetVoices();
+    assert.equal(play("shoot", 1000), true);
+    assert.equal(play("shoot", 1040), false);
+    assert.equal(play("shoot", 1200), true);
   });
 
   it("telegraphs a wave before it lands", () => {

@@ -91,17 +91,44 @@ export function toneFor(name) {
   return TONES[name] || null;
 }
 
-export function play(name) {
+const lastVoice = new Map();
+const VOICE_GAP = {
+  shoot: 120,
+  wave: 280,
+  flare: 280,
+  incoming: 220,
+  haul: 90,
+};
+
+export function resetVoices() {
+  lastVoice.clear();
+}
+
+function nowMs(explicit) {
+  if (explicit != null) return explicit;
+  if (typeof performance !== "undefined" && performance.now) return performance.now();
+  return Date.now();
+}
+
+export function play(name, when) {
+  const gap = VOICE_GAP[name] || 0;
+  if (gap) {
+    const t = nowMs(when);
+    const prev = lastVoice.get(name) || 0;
+    if (t - prev < gap) return false;
+    lastVoice.set(name, t);
+  }
   const tone = toneFor(name);
   if (!tone) {
     if (name === "win") {
       beep(520, 0.18, "sine", 0.055, 780);
       setTimeout(() => beep(780, 0.28, "sine", 0.045), 120);
     }
-    return;
+    return true;
   }
   beep(tone.freq, tone.dur, tone.type, tone.vol, tone.slide);
   if (name === "win") setTimeout(() => beep(780, 0.28, "sine", 0.045), 120);
   if (name === "incoming") setTimeout(() => beep(180, 0.1, "sine", 0.03, 140), 90);
   if (name === "kill") setTimeout(() => beep(990, 0.05, "sine", 0.025), 40);
+  return true;
 }

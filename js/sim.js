@@ -1547,11 +1547,8 @@ function updateHeaters(match, dt) {
     if (staffed(match, room) < 1) continue;
     for (const iceKey of [...match.ice]) {
       const [x, y] = iceKey.split(",").map(Number);
-      const dx = x - (room.cells[0].x + 0.0);
-      const dy = y - room.cells[0].y;
-      if (Math.hypot(dx, dy) <= HEATER_R) {
-        match.ice.delete(iceKey);
-      }
+      const warm = room.cells.some((c) => Math.hypot(x - c.x, y - c.y) <= HEATER_R);
+      if (warm) match.ice.delete(iceKey);
     }
   }
 }
