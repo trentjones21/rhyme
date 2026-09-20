@@ -207,8 +207,10 @@ function hud() {
   renderBag();
   const hold = $("holdBtn");
   if (hold) {
-    hold.disabled = !match.mechanics.pieceQueue;
-    hold.classList.toggle("on", !!(match.held && match.mechanics.pieceQueue));
+    const bag = !!(match.mechanics && match.mechanics.pieceQueue);
+    hold.hidden = !bag;
+    hold.disabled = !bag;
+    hold.classList.toggle("on", !!(match.held && bag));
   }
   if (match.tutorial && match.tutorial.needAssign) {
     match.tutorial.lockedUi = true;
@@ -260,9 +262,14 @@ function renderBag() {
     }
     return html + "</div>";
   };
+  const emptyMini = () => {
+    let html = `<div class="mini next" aria-label="Hold empty">`;
+    for (let i = 0; i < 16; i++) html += "<b></b>";
+    return html + "</div>";
+  };
   const holdMini = match.held
     ? `<div class="holdslot">${mini(match.held, true)}<em>Hold</em></div>`
-    : `<div class="holdslot empty"><div class="mini next" aria-label="Hold empty"></div><em>Hold</em></div>`;
+    : `<div class="holdslot empty">${emptyMini()}<em>Hold</em></div>`;
   el.innerHTML =
     holdMini + mini(match.piece, false) + (match.queue || []).slice(0, 2).map((n) => mini(n, true)).join("");
 }
