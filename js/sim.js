@@ -1793,6 +1793,132 @@ export function coachText(match) {
   return "Quiet geometry. Finish the survey.";
 }
 
+function scoreNearCoreCells(match, cells) {
+  const plus = match.core.cells;
+  let min = Infinity;
+  let kiss = 0;
+  for (const cell of cells) {
+    for (const p of plus) {
+      const man = Math.abs(cell.x - p.x) + Math.abs(cell.y - p.y);
+      min = Math.min(min, man);
+      if (man <= 1) kiss += 1;
+    }
+  }
+  return kiss * 50 - min;
+}
+
+function scoreTowardSpots(cells, spots) {
+  let min = Infinity;
+  for (const s of spots) {
+    for (const c of cells) {
+      min = Math.min(min, Math.abs(c.x - s.x) + Math.abs(c.y - s.y));
+    }
+  }
+  return -min;
+}
+
+function cellsFor(match, type, x, y, rot) {
+  return rotateShape(playerShape(match, type), rot).map(([dx, dy]) => ({ x: x + dx, y: y + dy }));
+}
+
+function placeBest(match, type, scoreFn) {
+  setTool(match, type);
+  let best = null;
+  const saved = match.rot;
+  for (let rot = 0; rot < 4; rot++) {
+    match.rot = rot;
+    for (let y = 0; y < match.rows; y++) {
+      for (let x = 0; x < match.cols; x++) {
+        if (!canPlace(match, type, x, y, rot)) continue;
+        const sc = scoreFn(match, cellsFor(match, type, x, y, rot));
+        if (!best || sc > best.sc) best = { x, y, rot, sc };
+      }
+    }
+  }
+  match.rot = saved;
+  if (!best) return false;
+  match.rot = best.rot;
+  return tapCell(match, best.x, best.y);
+}
+
+function staffFinale(match) {
+  setTool(match, "assign");
+  const keep = new Set(["scanner", "weapons", "shield"]);
+  const unpaid = unpaidCount(match);
+  const haulersWanted = unpaid > 0 ? 2 : 1;
+  const idle = () => match.kapsels.filter((k) => !k.assignment || k.assignment === match.core.id);
+  const assignedTo = (room) => match.kapsels.filter((k) => k.assignment === room.id).length;
+  let guard = 0;
+  while (idle().length < haulersWanted && guard++ < 8) {
+    const room = match.rooms.find((r) => r.type !== "core" && !keep.has(r.type) && assignedTo(r) > 0);
+    if (!room) break;
+    match.selected = room.id;
+    if (!recall(match)) break;
+  }
+  const order = ["scanner", "weapons", "shield", "heater", "garden", "kitchen", "extractor", "gate"];
+  for (const type of order) {
+    if (idle().length <= haulersWanted) break;
+    const room = match.rooms.find((r) => r.type === type && !r.dead);
+    if (!room) continue;
+    if (assignedTo(room) < 1) assignTo(match, room);
+  }
+}
+
+export function captainBeat(match) {
+  if (!match || match.status !== "playing") return false;
+  const allowed = new Set((match.level && match.level.allowed) || []);
+  const need = match.win || {};
+  if (match.thinkLocked) {
+    if (allowed.has("scanner") && !hasJob(match, "scanner")) return placeBest(match, "scanner", scoreNearCoreCells);
+    if (allowed.has("weapons") && !hasJob(match, "weapons")) return placeBest(match, "weapons", scoreNearCoreCells);
+    if (allowed.has("shield") && !hasJob(match, "shield") && (need.rooms?.shield || match.mechanics.flares)) {
+      return placeBest(match, "shield", scoreNearCoreCells);
+    }
+    return resumeThink(match);
+  }
+  staffFinale(match);
+  if (unpaidCount(match) >= 2 || coreStock(match, "mineral") < 4) return false;
+  if (allowed.has("scanner") && !hasJob(match, "scanner")) return placeBest(match, "scanner", scoreNearCoreCells);
+  const guns = match.rooms.filter((r) => r.type === "weapons" && !r.dead).length;
+  if (allowed.has("weapons") && guns < (match.enemies.length >= 3 ? 2 : 1)) {
+    return placeBest(match, "weapons", scoreNearCoreCells);
+  }
+  if (allowed.has("shield") && !hasJob(match, "shield") && (need.rooms?.shield || match.mechanics.flares)) {
+    return placeBest(match, "shield", scoreNearCoreCells);
+  }
+  if (need.relics && match.relics.filter((r) => r.linked).length < need.relics) {
+    const spots = match.relics.filter((r) => !r.linked);
+    if (placeBest(match, "corridor", (_, cells) => scoreTowardSpots(cells, spots))) return true;
+  }
+  if (need.thaw && allowed.has("heater") && match.ice.size > 0) {
+    const heaters = match.rooms.filter((r) => r.type === "heater" && !r.dead).length;
+    if (heaters < 2) {
+      const ice = [...match.ice].map((k) => {
+        const [x, y] = k.split(",").map(Number);
+        return { x, y };
+      });
+      return placeBest(match, "heater", (_, cells) => scoreTowardSpots(cells, ice));
+    }
+  }
+  if (allowed.has("garden") && !hasJob(match, "garden")) return placeBest(match, "garden", scoreNearCoreCells);
+  if (match.mechanics.kitchenChain && allowed.has("kitchen") && !hasJob(match, "kitchen")) {
+    return placeBest(match, "kitchen", scoreNearCoreCells);
+  }
+  if (need.rooms?.gate && match.rooms.filter((r) => r.type === "gate" && !r.dead).length < need.rooms.gate) {
+    return placeBest(match, "gate", scoreNearCoreCells);
+  }
+  if (coreStock(match, "mineral") < 10 && allowed.has("extractor") && !hasJob(match, "extractor")) {
+    const deposits = [...match.deposits].map((k) => {
+      const [x, y] = k.split(",").map(Number);
+      return { x, y };
+    });
+    return placeBest(match, "extractor", (_, cells) =>
+      deposits.length ? scoreTowardSpots(cells, deposits) : scoreNearCoreCells(match, cells)
+    );
+  }
+  return false;
+}
+
 export function gridAt(match, px, py) {
   return atPixel(match, px, py);
 }

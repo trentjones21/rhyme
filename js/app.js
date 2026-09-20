@@ -21,6 +21,7 @@ import {
   holdPiece,
   resumeThink,
   coachText,
+  captainBeat,
 } from "./sim.js";
 import { LEVELS, WORLDS, levelById, nextLevel, levelsInWorld } from "./levels.js";
 import { loadSave, writeSave, completeLevel, worldUnlocked, campaignStats } from "./save.js";
@@ -604,7 +605,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=10").catch(() => {});
 }
 
 renderTitle();
@@ -690,6 +691,30 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
         deaths: match.deaths,
         loseReason: match.loseReason,
       };
+    },
+    beat() {
+      if (!match) return null;
+      try {
+        captainBeat(match);
+      } catch (err) {
+        console.warn(err);
+      }
+      return this.snap();
+    },
+    startFinale(mult = 3) {
+      if (this._finale) clearInterval(this._finale);
+      if (match && match.thinkLocked) {
+        /* place the hull kit first; beat() unlocks when Scan/Gun/Aegis exist */
+      }
+      this._finale = setInterval(() => {
+        const s = this.beat();
+        if (s && !s.thinkLocked && speed < (mult || 3)) this.setSpeed(mult || 3);
+        if (!s || s.status !== "playing") {
+          clearInterval(this._finale);
+          this._finale = 0;
+        }
+      }, 280);
+      return this.beat();
     },
     setSpeed(n) {
       if (match && match.thinkLocked) resumeThink(match);

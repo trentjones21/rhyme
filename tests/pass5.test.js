@@ -13,6 +13,7 @@ import {
   assignTo,
   resumeThink,
   coachText,
+  captainBeat,
 } from "../js/sim.js";
 
 function tick(match, seconds) {
@@ -91,6 +92,18 @@ describe("Last Geometry holds time for a slow thumb", () => {
     tick(m, 3);
     assert.ok(coreStock(m, "food") >= 16, coreStock(m, "food"));
     assert.ok(m.waves.timer > 30, m.waves.timer);
+  });
+
+  it("lets the finale captain stamp Scan then unlock time", () => {
+    const m = createMatch(levelById("7-06"), { seed: 11 });
+    assert.equal(captainBeat(m), true);
+    assert.ok(m.rooms.some((r) => r.type === "scanner"));
+    assert.equal(m.thinkLocked, true);
+    captainBeat(m);
+    captainBeat(m);
+    captainBeat(m);
+    assert.equal(m.thinkLocked, false);
+    assert.equal(m.status, "playing");
   });
 });
 
