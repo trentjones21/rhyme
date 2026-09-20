@@ -13,7 +13,6 @@ import {
   coreStock,
   canPlace,
   rotateShape,
-  PIECES,
   ROOMS,
   recall,
   jobChips,
