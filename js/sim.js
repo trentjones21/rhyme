@@ -607,15 +607,56 @@ function shuffleBag(rng) {
   return bag;
 }
 
+export function pieceHasLanding(match) {
+  if (!match.piece || !PIECES[match.piece]) return false;
+  const types = (match.level.allowed || ["corridor"]).filter((t) => ROOMS[t] && t !== "core");
+  match._scanLanding = true;
+  try {
+    for (const type of types) {
+      for (let rot = 0; rot < 4; rot++) {
+        for (let y = 0; y < match.rows; y++) {
+          for (let x = 0; x < match.cols; x++) {
+            if (canPlace(match, type, x, y, rot)) return true;
+          }
+        }
+      }
+    }
+    return false;
+  } finally {
+    match._scanLanding = false;
+  }
+}
+
 function dealPiece(match) {
   if (!match.bag) match.bag = [];
-  if (match.bag.length < 4) match.bag.push(...shuffleBag(match.rng));
-  match.piece = match.bag.shift();
-  match.queue = match.bag.slice(0, 3);
+  for (let n = 0; n < 14; n++) {
+    if (match.bag.length < 4) match.bag.push(...shuffleBag(match.rng));
+    match.piece = match.bag.shift();
+    match.queue = match.bag.slice(0, 3);
+    if (pieceHasLanding(match)) return;
+  }
+}
+
+export function holdPiece(match) {
+  if (!match.mechanics || !match.mechanics.pieceQueue) return false;
+  if (!match.piece) return false;
+  const cur = match.piece;
+  if (match.held) {
+    match.piece = match.held;
+    match.held = cur;
+    match.queue = (match.bag || []).slice(0, 3);
+  } else {
+    match.held = cur;
+    dealPiece(match);
+  }
+  match.events.push({ type: "hold" });
+  match.pulse = 0.12;
+  return true;
 }
 
 function emitFx(match, kind, x, y, hue) {
-  match.fx.push({ kind, x, y, t: 0, life: kind === "spark" ? 0.5 : 0.7, hue: hue || "#f3f0e8" });
+  const life = kind === "spark" ? 0.5 : kind === "pulse" ? 0.55 : 0.7;
+  match.fx.push({ kind, x, y, t: 0, life, hue: hue || "#f3f0e8" });
 }
 
 function placePrebuilt(match, spec) {
@@ -690,8 +731,9 @@ export function createMatch(level, opts = {}) {
     events: [],
     bag: [],
     piece: null,
+    held: null,
     queue: [],
-    tutorial: { needAssign: false, assigned: false, roomId: null },
+    tutorial: { needAssign: false, assigned: false, staffed: false, roomId: null },
   };
 
   const cx = (level.core && level.core.x) || Math.floor(cols / 2);
@@ -750,9 +792,12 @@ export function createMatch(level, opts = {}) {
 
   if (match.mechanics.pieceQueue) dealPiece(match);
   if (match.mechanics.teachAssign) {
-    match.tutorial = { needAssign: false, assigned: false, roomId: null };
+    match.tutorial = { needAssign: false, assigned: false, staffed: false, roomId: null };
+  } else if (match.mechanics.teachStaff) {
+    match.tutorial = { needAssign: false, assigned: true, staffed: false, roomId: null };
   } else {
     match.tutorial.assigned = true;
+    match.tutorial.staffed = true;
   }
 
   attachMethods(match);
@@ -769,7 +814,7 @@ export function rotate(match) {
 }
 
 export function canPlace(match, type, x, y, rot = match.rot) {
-  if (match.tutorial && match.tutorial.needAssign) return false;
+  if (match.tutorial && match.tutorial.needAssign && !match._scanLanding) return false;
   if (!ROOMS[type] || type === "core") return false;
   if (match.level.allowed && match.level.allowed.indexOf(type) < 0) return false;
   const cells = footprint(match, type, x, y, rot);
@@ -855,6 +900,7 @@ export function assignTo(match, room) {
   if (match.tutorial && match.tutorial.needAssign) {
     match.tutorial.needAssign = false;
     match.tutorial.assigned = true;
+    match.tutorial.staffed = true;
   }
   return true;
 }
@@ -1141,6 +1187,8 @@ function work(match, k, dt) {
     } else {
       addStock(room, j.resource, 1);
       k.carry = null;
+      match.events.push({ type: "haul", resource: j.resource });
+      emitFx(match, "dust", room.cx, room.cy, j.resource === "mineral" ? "#e07898" : "#f0c24a");
       release(k);
     }
   } else if (j.kind === "build") {
@@ -1151,6 +1199,17 @@ function work(match, k, dt) {
           match.events.push({ type: "built", room: room.id });
           emitFx(match, "dust", room.cx, room.cy, room.def.hue);
           if (room.type === "corridor" || room.type === "gate") k.assignment = null;
+          if (match.mechanics.teachStaff && match.tutorial && !match.tutorial.staffed && room.type === "garden") {
+            for (const w of match.kapsels) {
+              if (w.assignment === room.id) {
+                release(w);
+                w.assignment = null;
+              }
+            }
+            match.tutorial.needAssign = true;
+            match.tutorial.roomId = room.id;
+            match.tool = "assign";
+          }
           release(k);
         }
   } else if (j.kind === "wait") {
@@ -1172,13 +1231,18 @@ function work(match, k, dt) {
       addStock(room, resource, 1);
       room.production -= duration;
       match.floats.push({ x: room.cx, y: room.cy, text: "+", life: 0.7, t: 0, color: resource });
-      emitFx(match, "dust", room.cx, room.cy, resource === "mineral" ? "#e07898" : "#5ea86a");
+      const hue = resource === "mineral" ? "#e07898" : "#5ea86a";
+      emitFx(match, "dust", room.cx, room.cy, hue);
+      emitFx(match, "pulse", room.cx, room.cy, hue);
+      match.events.push({ type: resource === "mineral" ? "mine" : "grow" });
       release(k);
     }
   } else if (j.kind === "cook") {
     if (k.workTimer >= COOK_SEC) {
       change(room.stock, "biomass", -1);
       addStock(room, "food", MEALS_PER_BIO);
+      match.events.push({ type: "cook" });
+      emitFx(match, "pulse", room.cx, room.cy, "#f0c24a");
       release(k);
     }
   } else if (j.kind === "recruit") {

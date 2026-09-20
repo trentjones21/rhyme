@@ -53,10 +53,11 @@ export const LEVELS = [
   }),
   L("1-02", 1, "Garden Duty", {
     lesson: "A garden grows meals. Tap it to send a kapsel.",
-    briefing: "Place a garden, assign a kapsel, and let them carry pale food back to the core pantry.",
+    briefing: "Place a garden, assign a kapsel, and let them carry pale food back to the core pantry. Assignment is not optional here either.",
     hint: "After it is built, tap the garden — not the kapsel.",
     start: { minerals: 8, food: 0, crew: 3 },
     allowed: ["corridor", "garden"],
+    mechanics: { teachStaff: true },
     win: { rooms: { garden: 1 }, food: 4 },
     par: 70,
   }),
@@ -396,7 +397,7 @@ export const LEVELS = [
   L("5-06", 5, "Folded War", {
     lesson: "Weather, fold, and war on one small board.",
     briefing: "Two waves, flares, gates legal. Compact stations still win.",
-    start: { minerals: 26, food: 12, crew: 5 },
+    start: { minerals: 28, food: 12, crew: 5 },
     deposits: [{ x: 0, y: 11 }],
     mechanics: {
       wormholes: true,
@@ -572,7 +573,7 @@ export const LEVELS = [
   L("7-06", 7, "Last Geometry", {
     lesson: "Quiet geometry. No extra advice.",
     briefing: "Four waves. Relics in the corners. The star, the frost, the unseen. Finish the survey.",
-    start: { minerals: 32, food: 16, crew: 6 },
+    start: { minerals: 36, food: 16, crew: 6 },
     relics: [
       { x: 0, y: 0 },
       { x: 8, y: 0 },

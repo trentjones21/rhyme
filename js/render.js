@@ -78,6 +78,7 @@ export function drawWorld(ctx, match, view, now) {
 
   drawTerrain(ctx, match, now);
   drawValidCells(ctx, match);
+  drawShieldAuras(ctx, match, now);
   drawRooms(ctx, match, now);
   drawKapsels(ctx, match);
   drawEnemies(ctx, match);
@@ -168,6 +169,22 @@ function drawTerrain(ctx, match, now) {
   }
 }
 
+function drawShieldAuras(ctx, match, now) {
+  for (const room of match.rooms) {
+    if (room.type !== "shield" || !room.built || room.dead) continue;
+    const pulse = 0.12 + Math.sin(now * 0.004 + room.id) * 0.05;
+    ctx.strokeStyle = `rgba(110,195,201,${0.22 + pulse})`;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(room.cx, room.cy, match.layout.cell * 2.85 + Math.sin(now * 0.003) * 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(110,195,201,${0.05 + pulse * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(room.cx, room.cy, match.layout.cell * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function drawRooms(ctx, match, now) {
   for (const room of match.rooms) {
     const color = room.def.hue || "#888";
@@ -195,6 +212,18 @@ function drawRooms(ctx, match, now) {
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.lineWidth = 1;
+      } else if (room.production > 0 && (room.type === "garden" || room.type === "extractor")) {
+        const glow = 0.08 + Math.min(0.22, room.production * 0.06);
+        ctx.fillStyle = room.type === "extractor" ? `rgba(213,107,140,${glow})` : `rgba(94,168,106,${glow})`;
+        round(ctx, r.x - 1, r.y - 1, r.w + 2, r.h + 2, 6);
+        ctx.fill();
+      }
+      if (teach && room.built) {
+        ctx.strokeStyle = `rgba(232,217,160,${0.55 + Math.sin(now * 0.01) * 0.35})`;
+        ctx.lineWidth = 2;
+        round(ctx, r.x, r.y, r.w, r.h, 5);
+        ctx.stroke();
+        ctx.lineWidth = 1;
       }
     }
     if (match.selected === room.id) {
@@ -218,13 +247,14 @@ function drawRooms(ctx, match, now) {
       ctx.fillStyle = "rgba(243,240,232,0.72)";
       ctx.lineWidth = 1.6;
       if (room.type === "garden") {
+        const sway = Math.sin(now * 0.004 + room.id) * 1.2;
         for (let i = -1; i <= 1; i++) {
           ctx.beginPath();
           ctx.moveTo(i * 7, 4);
-          ctx.lineTo(i * 7, -6);
+          ctx.lineTo(i * 7 + sway, -6);
           ctx.stroke();
           ctx.beginPath();
-          ctx.ellipse(i * 7 - 3, -5, 3.2, 1.6, -0.4, 0, Math.PI * 2);
+          ctx.ellipse(i * 7 + sway - 3, -5, 3.2, 1.6, -0.4 + sway * 0.08, 0, Math.PI * 2);
           ctx.fill();
         }
       } else if (room.type === "extractor") {
@@ -241,6 +271,13 @@ function drawRooms(ctx, match, now) {
         ctx.arc(-4, -1, 3, 0, Math.PI * 2);
         ctx.arc(4, -1, 3, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.strokeStyle = `rgba(240,194,74,${0.35 + Math.sin(now * 0.006) * 0.2})`;
+        for (let i = 0; i < 3; i++) {
+          const t = ((now * 0.001 + i * 0.3) % 1);
+          ctx.beginPath();
+          ctx.arc(-6 + i * 6, -10 - t * 6, 1.4, 0, Math.PI * 2);
+          ctx.stroke();
+        }
       } else if (room.type === "quarters") {
         ctx.strokeRect(-11, -7, 9, 13);
         ctx.strokeRect(2, -7, 9, 13);
@@ -272,6 +309,12 @@ function drawRooms(ctx, match, now) {
         ctx.beginPath();
         ctx.arc(0, 0, 1.6, 0, Math.PI * 2);
         ctx.fill();
+        const sweep = (now * 0.003) % (Math.PI * 2);
+        ctx.strokeStyle = "rgba(112,180,224,0.55)";
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(sweep) * 10, Math.sin(sweep) * 10);
+        ctx.stroke();
       } else if (room.type === "beacon") {
         for (let i = 0; i < 4; i++) {
           ctx.beginPath();
@@ -352,6 +395,20 @@ function drawStock(ctx, room) {
 function drawKapsels(ctx, match) {
   for (const k of match.kapsels) {
     const bob = k.state === "idle" ? 0 : Math.sin(k.bob) * 1.1;
+    if (k.state === "walking" && k.path && k.path[0]) {
+      const L = match.layout;
+      const tx = L.ox + (k.path[0].x + 0.5) * L.cell;
+      const ty = L.oy + (k.path[0].y + 0.5) * L.cell;
+      const dx = tx - k.x;
+      const dy = ty - k.y;
+      const d = Math.hypot(dx, dy) || 1;
+      ctx.strokeStyle = "rgba(243,240,232,0.18)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(k.x, k.y + 2);
+      ctx.lineTo(k.x - (dx / d) * 10, k.y - (dy / d) * 10 + 2);
+      ctx.stroke();
+    }
     ctx.fillStyle = "rgba(0,0,0,0.28)";
     ctx.beginPath();
     ctx.ellipse(k.x, k.y + 7, 5.5, 2.2, 0, 0, Math.PI * 2);
@@ -414,18 +471,24 @@ function drawEnemies(ctx, match) {
 
 function drawShots(ctx, match) {
   for (const s of match.shots) {
-    ctx.strokeStyle = "rgba(243,240,232,0.35)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(s.x, s.y);
     const dx = s.target ? s.target.x - s.x : 0;
     const dy = s.target ? s.target.y - s.y : 0;
     const d = Math.hypot(dx, dy) || 1;
+    ctx.strokeStyle = "rgba(243,240,232,0.22)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(s.x - (dx / d) * 16, s.y - (dy / d) * 16);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(243,240,232,0.55)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
     ctx.lineTo(s.x - (dx / d) * 10, s.y - (dy / d) * 10);
     ctx.stroke();
     ctx.fillStyle = "#f3f0e8";
     ctx.beginPath();
-    ctx.arc(s.x, s.y, 2.4, 0, Math.PI * 2);
+    ctx.arc(s.x, s.y, 2.6, 0, Math.PI * 2);
     ctx.fill();
   }
 }
@@ -445,6 +508,12 @@ function drawFx(ctx, match, now) {
         ctx.lineTo(f.x + Math.cos(ang) * r, f.y + Math.sin(ang) * r);
         ctx.stroke();
       }
+    } else if (f.kind === "pulse") {
+      ctx.strokeStyle = f.hue || "#f3f0e8";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 4 + f.t * 28, 0, Math.PI * 2);
+      ctx.stroke();
     } else {
       ctx.fillStyle = f.hue || "#f3f0e8";
       for (let i = 0; i < 5; i++) {
@@ -476,7 +545,7 @@ function drawFloats(ctx, match) {
   for (const f of match.floats) {
     const a = 1 - f.t / f.life;
     ctx.globalAlpha = a;
-    ctx.fillStyle = f.color === "mineral" ? "#e07898" : "#f0c24a";
+    ctx.fillStyle = f.color === "mineral" ? "#e07898" : f.color === "biomass" ? "#6fbf6a" : "#f0c24a";
     ctx.font = "700 11px -apple-system, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(f.text, f.x, f.y - f.t * 18);

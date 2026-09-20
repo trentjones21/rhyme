@@ -35,6 +35,12 @@
             <button class="btn ghost" id="openWorlds">Stations</button>
             <button class="btn ghost" id="openHow">How to play</button>
             <div class="tiny" id="progressLine">42 stations</div>
+            <div id="installSheet" class="install" hidden>
+              <button class="x" id="installDismiss" aria-label="Dismiss">×</button>
+              <b>Add to Home Screen</b>
+              <p id="installCopy">Tap Share, then Add to Home Screen for a portrait shell with haptics.</p>
+              <button class="btn" id="installBtn" hidden>Install</button>
+            </div>
           </div>
         </section>
 
@@ -94,6 +100,7 @@
             <div id="tools"></div>
             <div class="row2">
               <button id="rotateBtn">Rotate</button>
+              <button id="holdBtn" disabled>Hold</button>
               <button id="recallBtn">Recall</button>
               <button id="muteBtn">Sound</button>
             </div>
@@ -139,13 +146,13 @@
             </article>
             <article>
               <h3>The bag</h3>
-              <p>Late stations deal a random tetromino. You still pick the room’s job. Rotate, then place that shape. Add to Home Screen on iPhone for a portrait shell with haptics.</p>
+              <p>Late stations deal a random tetromino. You still pick the room’s job. Rotate, or Hold to park a stubborn I or O. Unplaceable pieces are skipped. Add to Home Screen on iPhone for a portrait shell with haptics.</p>
             </article>
           </div>
         </section>
       </div>
       <div id="homebar"></div>
     </div>
-    <script type="module" src="js/app.js?v=6"></script>
+    <script type="module" src="js/app.js?v=7"></script>
   </body>
 </html>

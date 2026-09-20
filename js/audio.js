@@ -101,6 +101,21 @@ export function play(name) {
     case "recruit":
       beep(660, 0.16, "sine", 0.05, 880);
       break;
+    case "grow":
+      beep(392, 0.12, "sine", 0.055, 587);
+      break;
+    case "mine":
+      beep(196, 0.11, "triangle", 0.06, 262);
+      break;
+    case "cook":
+      beep(494, 0.1, "sine", 0.05, 392);
+      break;
+    case "haul":
+      beep(330, 0.07, "square", 0.035, 220);
+      break;
+    case "hold":
+      beep(440, 0.06, "triangle", 0.04, 330);
+      break;
     default:
       break;
   }

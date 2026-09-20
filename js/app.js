@@ -18,6 +18,7 @@ import {
   jobChips,
   playerShape,
   fitPiece,
+  holdPiece,
 } from "./sim.js";
 import { LEVELS, WORLDS, levelById, nextLevel, levelsInWorld } from "./levels.js";
 import { loadSave, writeSave, completeLevel, worldUnlocked, campaignStats } from "./save.js";
@@ -44,7 +45,20 @@ function show(name) {
 }
 
 function buzz(ms) {
-  if (navigator.vibrate) navigator.vibrate(ms);
+  try {
+    if (navigator.vibrate) navigator.vibrate(ms);
+  } catch (_) {
+    /* ignore locked vibration */
+  }
+}
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function isIOS() {
+  const ua = navigator.userAgent || "";
+  return /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
 const CHIP_HUE = {
@@ -191,15 +205,26 @@ function hud() {
   $("objective").textContent = objectiveText(match);
   renderJobs();
   renderBag();
+  const hold = $("holdBtn");
+  if (hold) {
+    hold.disabled = !match.mechanics.pieceQueue;
+    hold.classList.toggle("on", !!(match.held && match.mechanics.pieceQueue));
+  }
   if (match.tutorial && match.tutorial.needAssign) {
-    $("hint").textContent = "Tap the blueprint to send a kapsel. That is the whole game.";
+    match.tutorial.lockedUi = true;
+    $("hint").textContent = match.mechanics.teachStaff
+      ? "The garden is built. Tap it — not the kapsel."
+      : "Tap the blueprint to send a kapsel. That is the whole game.";
     $("hint").classList.add("on", "lesson");
     if (match.tool !== "assign") setTool(match, "assign");
     const on = document.querySelector("#tools .tool.on");
     if (!on || on.dataset.tool !== "assign") buildTools();
   } else {
     $("hint").classList.remove("lesson");
-    if (match.tutorial && match.tutorial.assigned && !match.tutorial.unlockedUi) {
+    if (match.tutorial && match.tutorial.lockedUi) {
+      match.tutorial.lockedUi = false;
+      buildTools();
+    } else if (match.tutorial && match.tutorial.assigned && !match.tutorial.unlockedUi) {
       match.tutorial.unlockedUi = true;
       buildTools();
     }
@@ -235,7 +260,11 @@ function renderBag() {
     }
     return html + "</div>";
   };
-  el.innerHTML = mini(match.piece, false) + (match.queue || []).slice(0, 2).map((n) => mini(n, true)).join("");
+  const holdMini = match.held
+    ? `<div class="holdslot">${mini(match.held, true)}<em>Hold</em></div>`
+    : `<div class="holdslot empty"><div class="mini next" aria-label="Hold empty"></div><em>Hold</em></div>`;
+  el.innerHTML =
+    holdMini + mini(match.piece, false) + (match.queue || []).slice(0, 2).map((n) => mini(n, true)).join("");
 }
 
 function resize() {
@@ -273,6 +302,23 @@ function consumeEvents() {
     if (ev.type === "shoot") audio.play("shoot");
     if (ev.type === "win") audio.play("win");
     if (ev.type === "recruit") audio.play("recruit");
+    if (ev.type === "grow") {
+      audio.play("grow");
+      buzz(8);
+    }
+    if (ev.type === "mine") {
+      audio.play("mine");
+      buzz(14);
+    }
+    if (ev.type === "cook") {
+      audio.play("cook");
+      buzz(10);
+    }
+    if (ev.type === "haul") {
+      audio.play("haul");
+      buzz(6);
+    }
+    if (ev.type === "hold") audio.play("hold");
   }
   match.events = [];
 }
@@ -422,6 +468,11 @@ $("rotateBtn").onclick = () => {
   rotate(match);
   audio.play("tap");
 };
+$("holdBtn").onclick = () => {
+  if (!match) return;
+  if (holdPiece(match)) buzz(10);
+  else audio.play("error");
+};
 $("recallBtn").onclick = () => {
   if (!match) return;
   if (recall(match)) audio.play("assign");
@@ -447,5 +498,65 @@ stage.addEventListener("pointercancel", () => {
 window.addEventListener("resize", resize);
 window.addEventListener("orientationchange", () => setTimeout(resize, 80));
 
+let deferredInstall = null;
+function syncInstallSheet() {
+  const sheet = $("installSheet");
+  if (!sheet) return;
+  if (isStandalone()) {
+    sheet.hidden = true;
+    document.documentElement.classList.add("standalone");
+    return;
+  }
+  const dismissed = localStorage.getItem("rhyme-a2hs") === "1";
+  if (dismissed) {
+    sheet.hidden = true;
+    return;
+  }
+  const btn = $("installBtn");
+  if (deferredInstall && btn) {
+    btn.hidden = false;
+    $("installCopy").textContent = "Install the portrait shell. Haptics stay. Browser chrome goes.";
+    sheet.hidden = false;
+    return;
+  }
+  if (isIOS()) {
+    if (btn) btn.hidden = true;
+    $("installCopy").innerHTML = "Tap <b>Share</b>, then <b>Add to Home Screen</b>. Portrait. Haptics. No Safari chrome.";
+    sheet.hidden = false;
+    return;
+  }
+  sheet.hidden = true;
+}
+window.addEventListener("beforeinstallprompt", (ev) => {
+  ev.preventDefault();
+  deferredInstall = ev;
+  syncInstallSheet();
+});
+window.addEventListener("appinstalled", () => {
+  localStorage.setItem("rhyme-a2hs", "1");
+  syncInstallSheet();
+  buzz([8, 30, 12]);
+});
+$("installDismiss").onclick = () => {
+  localStorage.setItem("rhyme-a2hs", "1");
+  syncInstallSheet();
+};
+$("installBtn").onclick = async () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  try {
+    await deferredInstall.userChoice;
+  } catch (_) {
+    /* cancelled */
+  }
+  deferredInstall = null;
+  syncInstallSheet();
+};
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
+}
+
 renderTitle();
+syncInstallSheet();
 requestAnimationFrame(loop);
