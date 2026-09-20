@@ -655,7 +655,7 @@ export function holdPiece(match) {
 }
 
 function emitFx(match, kind, x, y, hue) {
-  const life = kind === "spark" ? 0.5 : kind === "pulse" ? 0.55 : 0.7;
+  const life = kind === "spark" ? 0.5 : kind === "pulse" ? 0.55 : kind === "burst" ? 0.42 : 0.7;
   match.fx.push({ kind, x, y, t: 0, life, hue: hue || "#f3f0e8" });
 }
 
@@ -714,6 +714,7 @@ export function createMatch(level, opts = {}) {
       interval: (level.waves && level.waves.interval) || 48,
       spec: level.waves || { first: 9999, interval: 48, count: 0 },
       incoming: false,
+      warned: false,
     },
     wavesCleared: 0,
     hadEnemies: false,
@@ -1413,12 +1414,27 @@ function applyGravity(match, e, dt) {
 
 function updateEnemies(match, dt) {
   match.waves.timer -= dt;
+  if (
+    !match.waves.warned &&
+    match.waves.timer <= 8 &&
+    match.waves.timer > 0 &&
+    match.waves.timer < 900 &&
+    match.status === "playing"
+  ) {
+    const spec = match.waves.spec;
+    const maxW = spec.max || spec.until || 99;
+    if (match.waves.index < maxW && waveCount(spec, match.waves.index + 1) > 0) {
+      match.waves.warned = true;
+      match.events.push({ type: "incoming", n: match.waves.index + 1 });
+    }
+  }
   if (match.waves.timer <= 0 && match.status === "playing") {
     const spec = match.waves.spec;
     const maxW = spec.max || spec.until || 99;
     if (match.waves.index < maxW && waveCount(spec, match.waves.index + 1) > 0) {
       spawnWave(match);
       match.waves.timer = match.waves.interval;
+      match.waves.warned = false;
     } else {
       match.waves.timer = 9999;
     }
@@ -1467,6 +1483,7 @@ function updateEnemies(match, dt) {
     }
     if (e.hp <= 0) {
       match.kills += 1;
+      emitFx(match, "burst", e.x, e.y, "#e24b52");
       match.enemies.splice(i, 1);
       match.events.push({ type: "kill" });
     }

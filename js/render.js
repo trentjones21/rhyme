@@ -2,9 +2,11 @@ import { ROOMS, canPlace } from "./sim.js";
 
 const VOID = "#07080d";
 let stars = null;
+let motes = null;
 
 function seedStars(n) {
   stars = [];
+  motes = [];
   let s = 1337;
   const rnd = () => {
     s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
@@ -14,9 +16,19 @@ function seedStars(n) {
     stars.push({
       x: rnd(),
       y: rnd(),
-      r: rnd() * 1.2 + 0.3,
-      a: rnd() * 0.55 + 0.15,
+      r: rnd() * 1.35 + 0.25,
+      a: rnd() * 0.55 + 0.12,
       p: rnd() * Math.PI * 2,
+    });
+  }
+  for (let i = 0; i < 28; i++) {
+    motes.push({
+      x: rnd(),
+      y: rnd(),
+      r: rnd() * 1.4 + 0.6,
+      a: rnd() * 0.12 + 0.04,
+      p: rnd() * Math.PI * 2,
+      s: 0.012 + rnd() * 0.02,
     });
   }
 }
@@ -29,19 +41,29 @@ function round(ctx, x, y, w, h, r) {
 export function drawWorld(ctx, match, view, now) {
   const w = view.w;
   const h = view.h;
-  if (!stars) seedStars(90);
+  if (!stars) seedStars(150);
   ctx.clearRect(0, 0, w, h);
   ctx.save();
   if (match.shake > 0) {
     ctx.translate((Math.random() - 0.5) * match.shake * 10, (Math.random() - 0.5) * match.shake * 10);
   }
 
-  const g = ctx.createRadialGradient(w * 0.3, h * 0.2, 20, w * 0.45, h * 0.45, Math.max(w, h) * 0.7);
-  g.addColorStop(0, "#12141c");
-  g.addColorStop(0.45, VOID);
-  g.addColorStop(1, "#050508");
+  const g = ctx.createRadialGradient(w * 0.32, h * 0.18, 12, w * 0.48, h * 0.42, Math.max(w, h) * 0.78);
+  g.addColorStop(0, "#1a1e2c");
+  g.addColorStop(0.35, "#10131c");
+  g.addColorStop(0.7, VOID);
+  g.addColorStop(1, "#040406");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
+
+  ctx.fillStyle = "rgba(70, 86, 130, 0.14)";
+  ctx.beginPath();
+  ctx.ellipse(w * 0.2, h * 0.08, w * 0.45, 70, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(90, 50, 70, 0.1)";
+  ctx.beginPath();
+  ctx.ellipse(w * 0.85, h * 0.72, 120, 180, 0.4, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.fillStyle = "#1a2030";
   ctx.beginPath();
@@ -53,10 +75,18 @@ export function drawWorld(ctx, match, view, now) {
   ctx.fill();
 
   for (const st of stars) {
-    const tw = 0.6 + Math.sin(now * 0.0018 + st.p) * 0.4;
+    const tw = 0.55 + Math.sin(now * 0.0018 + st.p) * 0.45;
     ctx.fillStyle = `rgba(236,234,226,${st.a * tw})`;
     ctx.beginPath();
     ctx.arc(st.x * w, st.y * h, st.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (const m of motes) {
+    const x = ((m.x + now * 0.00002 * m.s) % 1) * w;
+    const y = ((m.y + Math.sin(now * 0.0004 + m.p) * 0.02) % 1) * h;
+    ctx.fillStyle = `rgba(243,240,232,${m.a})`;
+    ctx.beginPath();
+    ctx.arc(x, y, m.r, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -196,11 +226,12 @@ function drawRooms(ctx, match, now) {
       round(ctx, r.x, r.y, r.w, r.h, 5);
       ctx.fill();
       ctx.globalAlpha = 1;
-      ctx.fillStyle = "rgba(12,14,20,0.22)";
-      round(ctx, r.x + 3, r.y + 3, r.w - 6, r.h - 6, 3);
-      ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.16)";
-      round(ctx, r.x + 2, r.y + 2, r.w - 4, Math.max(3, r.h * 0.18), 3);
+      const inner = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
+      inner.addColorStop(0, "rgba(255,255,255,0.16)");
+      inner.addColorStop(0.45, "rgba(12,14,20,0.08)");
+      inner.addColorStop(1, "rgba(12,14,20,0.28)");
+      ctx.fillStyle = inner;
+      round(ctx, r.x + 2.2, r.y + 2.2, r.w - 4.4, r.h - 4.4, 3.5);
       ctx.fill();
       if (!room.built) {
         ctx.strokeStyle = teach
@@ -236,6 +267,11 @@ function drawRooms(ctx, match, now) {
       }
     }
     if (room.type === "core") {
+      const breath = 0.55 + Math.sin(now * 0.003) * 0.2;
+      ctx.fillStyle = `rgba(243,240,232,${0.12 + breath * 0.08})`;
+      ctx.beginPath();
+      ctx.arc(room.cx, room.cy, 11 + breath * 2, 0, Math.PI * 2);
+      ctx.fill();
       ctx.fillStyle = "rgba(243,240,232,0.88)";
       ctx.font = "700 11px -apple-system, sans-serif";
       ctx.textAlign = "center";
@@ -508,6 +544,15 @@ function drawFx(ctx, match, now) {
         ctx.lineTo(f.x + Math.cos(ang) * r, f.y + Math.sin(ang) * r);
         ctx.stroke();
       }
+    } else if (f.kind === "burst") {
+      ctx.fillStyle = f.hue || "#e24b52";
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2 + f.t * 6;
+        const r = 3 + f.t * 22;
+        ctx.beginPath();
+        ctx.arc(f.x + Math.cos(ang) * r, f.y + Math.sin(ang) * r, 1.8 * a, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else if (f.kind === "pulse") {
       ctx.strokeStyle = f.hue || "#f3f0e8";
       ctx.lineWidth = 2;
@@ -554,6 +599,11 @@ function drawFloats(ctx, match) {
 }
 
 function drawVignette(ctx, match, w, h) {
+  const v = ctx.createRadialGradient(w / 2, h * 0.42, Math.min(w, h) * 0.2, w / 2, h / 2, Math.max(w, h) * 0.72);
+  v.addColorStop(0, "rgba(0,0,0,0)");
+  v.addColorStop(1, "rgba(0,0,0,0.38)");
+  ctx.fillStyle = v;
+  ctx.fillRect(0, 0, w, h);
   if (match.flare && match.flare.warning > 0) {
     ctx.fillStyle = `rgba(224,122,74,${0.12 * match.flare.warning})`;
     ctx.fillRect(0, 0, w, h);

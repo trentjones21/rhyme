@@ -16,7 +16,7 @@ export function isMuted() {
 
 export function setMuted(v) {
   muted = v;
-  if (drone && drone.gain) drone.gain.gain.value = muted ? 0 : 0.027;
+  if (drone && drone.gain) drone.gain.gain.value = muted ? 0 : 0.024;
 }
 
 export async function unlock() {
@@ -29,23 +29,23 @@ export async function unlock() {
 function startDrone() {
   const c = ac();
   const g = c.createGain();
-  g.gain.value = muted ? 0 : 0.027;
+  g.gain.value = muted ? 0 : 0.024;
   g.connect(c.destination);
-  const make = (freq, type, detune) => {
+  const make = (freq, type, detune, mix) => {
     const o = c.createOscillator();
     o.type = type;
     o.frequency.value = freq;
     o.detune.value = detune;
     const og = c.createGain();
-    og.gain.value = 0.5;
+    og.gain.value = mix;
     o.connect(og);
     og.connect(g);
     o.start();
     return o;
   };
-  make(55, "sine", 0);
-  make(82.4, "sine", 6);
-  make(164.8, "triangle", -8);
+  make(55, "sine", 0, 0.55);
+  make(82.4, "sine", 7, 0.28);
+  make(164.8, "triangle", -10, 0.12);
   drone = { gain: g };
 }
 
@@ -65,58 +65,43 @@ function beep(freq, dur, type, vol, slide) {
   o.stop(c.currentTime + dur + 0.02);
 }
 
+export const TONES = {
+  place: { freq: 320, dur: 0.09, type: "triangle", vol: 0.06, slide: 480 },
+  assign: { freq: 540, dur: 0.07, type: "sine", vol: 0.045 },
+  error: { freq: 180, dur: 0.14, type: "square", vol: 0.035, slide: 120 },
+  built: { freq: 420, dur: 0.12, type: "triangle", vol: 0.055, slide: 640 },
+  shoot: { freq: 880, dur: 0.035, type: "sine", vol: 0.022, slide: 1400 },
+  kill: { freq: 1320, dur: 0.07, type: "triangle", vol: 0.04, slide: 880 },
+  wave: { freq: 310, dur: 0.18, type: "triangle", vol: 0.045, slide: 170 },
+  incoming: { freq: 240, dur: 0.12, type: "sine", vol: 0.04, slide: 380 },
+  flare: { freq: 98, dur: 0.32, type: "sine", vol: 0.05, slide: 64 },
+  win: { freq: 520, dur: 0.18, type: "sine", vol: 0.055, slide: 780 },
+  over: { freq: 200, dur: 0.5, type: "triangle", vol: 0.05, slide: 70 },
+  tap: { freq: 700, dur: 0.04, type: "sine", vol: 0.028 },
+  recruit: { freq: 660, dur: 0.16, type: "sine", vol: 0.045, slide: 880 },
+  grow: { freq: 392, dur: 0.11, type: "sine", vol: 0.045, slide: 587 },
+  mine: { freq: 196, dur: 0.1, type: "triangle", vol: 0.05, slide: 262 },
+  cook: { freq: 494, dur: 0.09, type: "sine", vol: 0.04, slide: 392 },
+  haul: { freq: 330, dur: 0.06, type: "triangle", vol: 0.03, slide: 220 },
+  hold: { freq: 440, dur: 0.06, type: "triangle", vol: 0.035, slide: 330 },
+  cleared: { freq: 620, dur: 0.16, type: "sine", vol: 0.045, slide: 880 },
+};
+
+export function toneFor(name) {
+  return TONES[name] || null;
+}
+
 export function play(name) {
-  switch (name) {
-    case "place":
-      beep(320, 0.09, "triangle", 0.07, 480);
-      break;
-    case "assign":
-      beep(540, 0.07, "sine", 0.05);
-      break;
-    case "error":
-      beep(180, 0.14, "square", 0.04, 120);
-      break;
-    case "built":
-      beep(420, 0.12, "triangle", 0.06, 640);
-      break;
-    case "shoot":
-      beep(980, 0.04, "square", 0.03, 1400);
-      break;
-    case "wave":
-      beep(220, 0.4, "sawtooth", 0.05, 90);
-      break;
-    case "flare":
-      beep(140, 0.5, "sawtooth", 0.06, 60);
-      break;
-    case "win":
-      beep(520, 0.18, "sine", 0.06, 780);
-      setTimeout(() => beep(780, 0.28, "sine", 0.05), 120);
-      break;
-    case "over":
-      beep(200, 0.55, "triangle", 0.06, 70);
-      break;
-    case "tap":
-      beep(700, 0.04, "sine", 0.03);
-      break;
-    case "recruit":
-      beep(660, 0.16, "sine", 0.05, 880);
-      break;
-    case "grow":
-      beep(392, 0.12, "sine", 0.055, 587);
-      break;
-    case "mine":
-      beep(196, 0.11, "triangle", 0.06, 262);
-      break;
-    case "cook":
-      beep(494, 0.1, "sine", 0.05, 392);
-      break;
-    case "haul":
-      beep(330, 0.07, "square", 0.035, 220);
-      break;
-    case "hold":
-      beep(440, 0.06, "triangle", 0.04, 330);
-      break;
-    default:
-      break;
+  const tone = toneFor(name);
+  if (!tone) {
+    if (name === "win") {
+      beep(520, 0.18, "sine", 0.055, 780);
+      setTimeout(() => beep(780, 0.28, "sine", 0.045), 120);
+    }
+    return;
   }
+  beep(tone.freq, tone.dur, tone.type, tone.vol, tone.slide);
+  if (name === "win") setTimeout(() => beep(780, 0.28, "sine", 0.045), 120);
+  if (name === "incoming") setTimeout(() => beep(180, 0.1, "sine", 0.03, 140), 90);
+  if (name === "kill") setTimeout(() => beep(990, 0.05, "sine", 0.025), 40);
 }

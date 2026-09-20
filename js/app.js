@@ -24,6 +24,7 @@ import { LEVELS, WORLDS, levelById, nextLevel, levelsInWorld } from "./levels.js
 import { loadSave, writeSave, completeLevel, worldUnlocked, campaignStats } from "./save.js";
 import { drawWorld } from "./render.js";
 import * as audio from "./audio.js";
+import { shouldShowInstallHint } from "./install.js";
 
 const $ = (id) => document.getElementById(id);
 const screens = ["title", "worlds", "levels", "brief", "play", "how"];
@@ -291,6 +292,8 @@ function resize() {
   }
 }
 
+let lastShootAt = 0;
+
 function consumeEvents() {
   if (!match) return;
   for (const ev of match.events) {
@@ -300,13 +303,25 @@ function consumeEvents() {
       buzz(12);
     }
     if (ev.type === "built") audio.play("built");
+    if (ev.type === "incoming") {
+      audio.play("incoming");
+      buzz(8);
+    }
     if (ev.type === "wave") {
       audio.play("wave");
-      buzz([20, 40, 20]);
+      buzz([16, 40, 16]);
     }
     if (ev.type === "win") buzz([12, 40, 12, 40, 24]);
     if (ev.type === "flare") audio.play("flare");
-    if (ev.type === "shoot") audio.play("shoot");
+    if (ev.type === "shoot") {
+      const now = performance.now();
+      if (now - lastShootAt > 110) {
+        audio.play("shoot");
+        lastShootAt = now;
+      }
+    }
+    if (ev.type === "kill") audio.play("kill");
+    if (ev.type === "cleared") audio.play("cleared");
     if (ev.type === "win") audio.play("win");
     if (ev.type === "recruit") audio.play("recruit");
     if (ev.type === "grow") {
@@ -509,30 +524,17 @@ let deferredInstall = null;
 function syncInstallSheet() {
   const sheet = $("installSheet");
   if (!sheet) return;
-  if (isStandalone()) {
-    sheet.hidden = true;
-    document.documentElement.classList.add("standalone");
-    return;
-  }
+  const standalone = isStandalone();
+  if (standalone) document.documentElement.classList.add("standalone");
   const dismissed = localStorage.getItem("rhyme-a2hs") === "1";
-  if (dismissed) {
-    sheet.hidden = true;
-    return;
-  }
+  const show = shouldShowInstallHint({
+    ios: isIOS(),
+    standalone,
+    dismissed,
+  });
+  sheet.hidden = !show;
   const btn = $("installBtn");
-  if (deferredInstall && btn) {
-    btn.hidden = false;
-    $("installCopy").textContent = "Install the portrait shell. Haptics stay. Browser chrome goes.";
-    sheet.hidden = false;
-    return;
-  }
-  if (isIOS()) {
-    if (btn) btn.hidden = true;
-    $("installCopy").innerHTML = "Tap <b>Share</b>, then <b>Add to Home Screen</b>. Portrait. Haptics. No Safari chrome.";
-    sheet.hidden = false;
-    return;
-  }
-  sheet.hidden = true;
+  if (btn) btn.hidden = true;
 }
 window.addEventListener("beforeinstallprompt", (ev) => {
   ev.preventDefault();
