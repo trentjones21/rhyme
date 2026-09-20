@@ -258,10 +258,25 @@ function loop(now) {
 function onCanvasTap(ev) {
   if (!match || match.status !== "playing") return;
   const rect = $("stage").getBoundingClientRect();
-  const x = (ev.clientX ?? ev.touches[0].clientX) - rect.left;
-  const y = (ev.clientY ?? ev.touches[0].clientY) - rect.top;
+  const x = (ev.clientX ?? (ev.touches && ev.touches[0].clientX)) - rect.left;
+  const y = (ev.clientY ?? (ev.touches && ev.touches[0].clientY)) - rect.top;
   const g = gridAt(match, x, y);
-  const ok = tapCell(match, g.x, g.y);
+  let ok = tapCell(match, g.x, g.y);
+  if (!ok && SHAPES[match.tool]) {
+    let best = null;
+    let bestD = 2;
+    for (let yy = 0; yy < match.rows; yy++) {
+      for (let xx = 0; xx < match.cols; xx++) {
+        if (!canPlace(match, match.tool, xx, yy, match.rot)) continue;
+        const d = Math.abs(xx - g.x) + Math.abs(yy - g.y);
+        if (d && d < bestD) {
+          best = { x: xx, y: yy };
+          bestD = d;
+        }
+      }
+    }
+    if (best) ok = tapCell(match, best.x, best.y);
+  }
   if (!ok && match.tool !== "assign") audio.play("error");
   else if (ok) buzz(10);
   ghost = null;

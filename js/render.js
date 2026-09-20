@@ -1,4 +1,4 @@
-import { ROOMS } from "./sim.js";
+import { ROOMS, canPlace } from "./sim.js";
 
 const VOID = "#07080d";
 let stars = null;
@@ -77,6 +77,7 @@ export function drawWorld(ctx, match, view, now) {
   ctx.stroke();
 
   drawTerrain(ctx, match, now);
+  drawValidCells(ctx, match);
   drawRooms(ctx, match, now);
   drawKapsels(ctx, match);
   drawEnemies(ctx, match);
@@ -96,6 +97,19 @@ function cellRect(match, x, y, inset) {
     w: L.cell - pad * 2,
     h: L.cell - pad * 2,
   };
+}
+
+function drawValidCells(ctx, match) {
+  if (!match.tool || match.tool === "assign" || match.tool === "salvage" || match.tool === "overload") return;
+  ctx.fillStyle = "rgba(94,168,106,0.12)";
+  for (let y = 0; y < match.rows; y++) {
+    for (let x = 0; x < match.cols; x++) {
+      if (!canPlace(match, match.tool, x, y, match.rot)) continue;
+      const r = cellRect(match, x, y, 4);
+      round(ctx, r.x, r.y, r.w, r.h, 4);
+      ctx.fill();
+    }
+  }
 }
 
 function drawTerrain(ctx, match, now) {
@@ -183,10 +197,73 @@ function drawRooms(ctx, match, now) {
       }
     }
     if (room.type === "core") {
-      ctx.fillStyle = "rgba(243,240,232,0.8)";
-      ctx.font = "600 9px -apple-system, sans-serif";
+      ctx.fillStyle = "rgba(243,240,232,0.88)";
+      ctx.font = "700 11px -apple-system, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("CORE", room.cx, room.cy + 3);
+      ctx.fillText("CORE", room.cx, room.cy + 4);
+    } else if (room.built) {
+      ctx.save();
+      ctx.translate(room.cx, room.cy);
+      ctx.strokeStyle = "rgba(243,240,232,0.72)";
+      ctx.fillStyle = "rgba(243,240,232,0.72)";
+      ctx.lineWidth = 1.6;
+      if (room.type === "garden") {
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * 7, 4);
+          ctx.lineTo(i * 7, -6);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.ellipse(i * 7 - 3, -5, 3.2, 1.6, -0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (room.type === "extractor") {
+        ctx.beginPath();
+        ctx.moveTo(0, -8);
+        ctx.lineTo(6, -1);
+        ctx.lineTo(0, 6);
+        ctx.lineTo(-6, -1);
+        ctx.closePath();
+        ctx.fill();
+      } else if (room.type === "kitchen") {
+        ctx.strokeRect(-10, -7, 20, 12);
+        ctx.beginPath();
+        ctx.arc(-4, -1, 3, 0, Math.PI * 2);
+        ctx.arc(4, -1, 3, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (room.type === "quarters") {
+        ctx.strokeRect(-11, -7, 9, 13);
+        ctx.strokeRect(2, -7, 9, 13);
+      } else if (room.type === "shield") {
+        ctx.beginPath();
+        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, 0, 4, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (room.type === "gate") {
+        ctx.strokeRect(-6, -6, 12, 12);
+        ctx.beginPath();
+        ctx.moveTo(-3, 0);
+        ctx.lineTo(3, 0);
+        ctx.moveTo(0, -3);
+        ctx.lineTo(0, 3);
+        ctx.stroke();
+      } else if (room.type === "heater") {
+        ctx.beginPath();
+        ctx.moveTo(0, 6);
+        ctx.quadraticCurveTo(-8, -2, 0, -8);
+        ctx.quadraticCurveTo(8, -2, 0, 6);
+        ctx.stroke();
+      } else if (room.type === "scanner") {
+        ctx.beginPath();
+        ctx.arc(0, 0, 7, -0.2, Math.PI * 1.2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, 0, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
     }
     if (room.type === "weapons" && room.built) {
       ctx.fillStyle = "#f3f0e8";

@@ -134,7 +134,7 @@ export function computeLayout(vw, vh, cols, rows, insets = {}) {
   const bottom = insets.bottom || 210;
   const availW = Math.max(120, vw - padL - padR);
   const availH = Math.max(160, vh - top - bottom);
-  const cell = Math.floor(Math.min(availW / cols, availH / rows, 36));
+  const cell = Math.floor(Math.min(availW / cols, availH / rows, 44));
   const gridW = cols * cell;
   const gridH = rows * cell;
   return {
@@ -633,9 +633,32 @@ export function canPlace(match, type, x, y, rot = match.rot) {
   return true;
 }
 
+function reconcileClaims(match) {
+  for (const room of match.rooms) {
+    room.incoming = {};
+    room.outgoing = {};
+    room.busy = {};
+  }
+  for (const k of match.kapsels) {
+    const j = k.job;
+    if (!j || !j.target) continue;
+    if (j.kind === "haul") {
+      if (j.source && !j.picked) change(j.source.outgoing, j.resource, 1);
+      change(j.target.incoming, j.resource, 1);
+    } else {
+      if (j.kind && j.kind !== "wait" && j.kind !== "staff" && j.kind !== "produce" && j.kind !== "idlewalk") {
+        j.target.busy[j.kind] = true;
+      }
+      if (j.resource) change(j.target.outgoing, j.resource, j.amount || 1);
+      if (j.kind === "cook") change(j.target.incoming, "food", MEALS_PER_BIO);
+    }
+  }
+}
+
 function tryPlace(match, type, x, y) {
   if (!canPlace(match, type, x, y, match.rot)) return false;
-  makeRoom(match, type, x, y, match.rot, false);
+  const room = makeRoom(match, type, x, y, match.rot, false);
+  assignTo(match, room);
   match.events.push({ type: "place", x, y });
   match.pulse = 0.18;
   return true;
@@ -658,14 +681,12 @@ function nearestKapsel(match, room, assignedToThis = false) {
 
 export function assignTo(match, room) {
   if (!room || room.dead) return false;
+  if (room.type === "core") return false;
+  if (room.built && (room.type === "corridor" || room.type === "gate")) return false;
   const idle = match.kapsels.find((k) => k.assignment == null) || match.kapsels.find((k) => k.assignment === match.core.id);
   const k = idle || nearestKapsel(match, room, true);
   if (!k) return false;
-  if (k.job && k.job.kind === "haul" && k.carry) {
-    // keep cargo, just retarget after delivery
-  } else {
-    release(k);
-  }
+  if (!(k.job && k.job.kind === "haul" && k.carry)) release(k);
   k.assignment = room.id;
   k.retry = 0;
   match.selected = room.id;
@@ -884,9 +905,16 @@ function chooseJob(match, k) {
     if (p) return { kind: "wait", target: room, path: p };
   }
 
-  if (room.type === "weapons" || room.type === "heater" || room.type === "scanner" || room.type === "shield" || room.type === "beacon") {
+  if (room.type === "weapons" || room.type === "heater" || room.type === "scanner" || room.type === "beacon") {
     const p = routeToRoom(match, from.x, from.y, room);
     if (p) return { kind: "staff", target: room, path: p };
+  }
+
+  if (room.built && (room.type === "corridor" || room.type === "gate" || room.type === "shield")) {
+    k.assignment = null;
+    const home = routeToRoom(match, from.x, from.y, match.core);
+    if (home && home.length) return { kind: "idlewalk", target: match.core, path: home };
+    return null;
   }
 
   const p = routeToRoom(match, from.x, from.y, room);
@@ -952,12 +980,13 @@ function work(match, k, dt) {
     }
   } else if (j.kind === "build") {
     room.progress = Math.min(1, room.progress + dt / (BUILD_SEC * Math.max(1, room.def.cost)));
-    if (room.progress >= 1) {
-      room.built = true;
-      roomCenter(match, room);
-      match.events.push({ type: "built", room: room.id });
-      release(k);
-    }
+        if (room.progress >= 1) {
+          room.built = true;
+          roomCenter(match, room);
+          match.events.push({ type: "built", room: room.id });
+          if (room.type === "corridor" || room.type === "gate") k.assignment = null;
+          release(k);
+        }
   } else if (j.kind === "wait") {
     if (k.workTimer > 0.35) release(k);
   } else if (j.kind === "produce") {
@@ -1020,6 +1049,7 @@ function loseKapsel(match, index, reason) {
 }
 
 function updateKapsels(match, dt) {
+  reconcileClaims(match);
   for (let i = match.kapsels.length - 1; i >= 0; i--) {
     const k = match.kapsels[i];
     k.bob += dt * 8;

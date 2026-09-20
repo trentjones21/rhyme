@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { LEVELS, WORLDS, levelById, nextLevel, levelsInWorld } from "../js/levels.js";
-import { createMatch, step, setTool, tapCell, assignTo } from "../js/sim.js";
+import { createMatch, step, setTool, tapCell } from "../js/sim.js";
 import { loadSave, completeLevel, worldUnlocked, campaignStats } from "../js/save.js";
 
 describe("campaign data", () => {
@@ -77,7 +77,6 @@ describe("level boot", () => {
     assert.equal(tapCell(m, 4, 4), true);
     assert.equal(tapCell(m, 4, 8), true);
     assert.equal(tapCell(m, 2, 6), true);
-    for (const room of m.rooms) if (room.type === "corridor") assignTo(m, room);
     for (let i = 0; i < 500; i++) step(m, 0.05);
     assert.equal(m.status, "won");
     assert.ok(m.stars >= 1);

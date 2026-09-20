@@ -140,6 +140,17 @@ describe("economy", () => {
     assert.equal(coreStock(m, "mineral"), 7);
   });
 
+  it("heals leaked mineral claims so a blueprint can still finish", () => {
+    const m = mini({ start: { minerals: 8, food: 0, crew: 2 }, win: { corridors: 1 } });
+    setTool(m, "corridor");
+    tapCell(m, 4, 4);
+    const site = roomAt(m, 4, 4);
+    site.incoming.mineral = 4;
+    assignTo(m, site);
+    tick(m, 20);
+    assert.equal(site.built, true);
+  });
+
   it("queued corridors must be built in connected order", () => {
     const m = mini({ start: { minerals: 10, food: 0, crew: 3 } });
     setTool(m, "corridor");

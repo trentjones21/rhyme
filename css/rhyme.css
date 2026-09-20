@@ -16,27 +16,19 @@ button { font-family: inherit; color: inherit; background: none; border: 0; appe
 body { display: grid; place-items: center; min-height: 100dvh; }
 
 #phone {
-  width: min(100vw, 430px);
-  height: min(100dvh, 932px);
+  width: min(100vw, calc(100dvh * 9 / 19.5));
+  height: 100dvh;
   background: var(--void);
   position: relative;
   overflow: hidden;
-  border-radius: 44px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
 }
-#notch {
-  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-  width: 118px; height: 34px; border-radius: 20px; background: #050506; z-index: 20; pointer-events: none;
-}
-#homebar {
-  position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
-  width: 128px; height: 5px; border-radius: 99px; background: rgba(243, 240, 232, 0.28); z-index: 20; pointer-events: none;
-}
+#notch, #homebar { display: none; }
 @media (max-width: 500px) {
-  #phone { width: 100vw; height: 100dvh; border-radius: 0; box-shadow: none; }
-  #notch, #homebar { display: none; }
+  #phone { width: 100vw; height: 100dvh; }
 }
 
 #app {
@@ -54,6 +46,7 @@ body { display: grid; place-items: center; min-height: 100dvh; }
 .pad { padding: 22px 22px 8px; }
 .toprow { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .brand { letter-spacing: 0.42em; font-size: 13px; font-weight: 600; opacity: 0.7; padding-left: 0.42em; }
+.brand.tight { letter-spacing: 0.12em; padding-left: 0; }
 h1 { font-size: 42px; letter-spacing: 0.28em; font-weight: 560; margin: 18px 0 8px; padding-left: 0.28em; }
 .lede { color: var(--muted); line-height: 1.45; font-size: 16px; max-width: 22em; }
 
@@ -211,8 +204,9 @@ h1 { font-size: 42px; letter-spacing: 0.28em; font-weight: 560; margin: 18px 0 8
 .row2 button.on { background: var(--paper); color: #161822; }
 
 .overlay {
-  position: absolute; inset: 0;
-  background: rgba(7, 8, 13, 0.78);
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 8, 13, 0.88);
   display: none;
   flex-direction: column;
   justify-content: flex-end;
