@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { LEVELS, levelById } from "../js/levels.js";
-import { createMatch, step, tapCell, setTool, canPlace, coreStock, playerShape, rotateShape, assignTo, recall } from "../js/sim.js";
+import { createMatch, step, tapCell, setTool, canPlace, coreStock, playerShape, rotateShape, assignTo, recall, resumeThink } from "../js/sim.js";
 import { shouldShowInstallHint } from "../js/install.js";
 import { toneFor, play, resetVoices } from "../js/audio.js";
 import { endOverlaySpec } from "../js/overlay.js";
@@ -13,6 +13,7 @@ function pantrySecs(level) {
 }
 
 function tick(match, seconds) {
+  if (match.thinkLocked) resumeThink(match);
   const dt = 0.05;
   const n = Math.ceil(seconds / dt);
   for (let i = 0; i < n; i++) step(match, dt);

@@ -84,6 +84,7 @@ export const TONES = {
   cook: { freq: 494, dur: 0.09, type: "sine", vol: 0.04, slide: 392 },
   haul: { freq: 330, dur: 0.06, type: "triangle", vol: 0.03, slide: 220 },
   hold: { freq: 440, dur: 0.06, type: "triangle", vol: 0.035, slide: 330 },
+  go: { freq: 392, dur: 0.14, type: "sine", vol: 0.05, slide: 620 },
   cleared: { freq: 620, dur: 0.16, type: "sine", vol: 0.045, slide: 880 },
 };
 
@@ -130,5 +131,6 @@ export function play(name, when) {
   if (name === "win") setTimeout(() => beep(780, 0.28, "sine", 0.045), 120);
   if (name === "incoming") setTimeout(() => beep(180, 0.1, "sine", 0.03, 140), 90);
   if (name === "kill") setTimeout(() => beep(990, 0.05, "sine", 0.025), 40);
+  if (name === "go") setTimeout(() => beep(523, 0.16, "sine", 0.04, 784), 90);
   return true;
 }

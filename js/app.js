@@ -19,6 +19,8 @@ import {
   playerShape,
   fitPiece,
   holdPiece,
+  resumeThink,
+  coachText,
 } from "./sim.js";
 import { LEVELS, WORLDS, levelById, nextLevel, levelsInWorld } from "./levels.js";
 import { loadSave, writeSave, completeLevel, worldUnlocked, campaignStats } from "./save.js";
@@ -144,8 +146,11 @@ function startLevel(level) {
   show("play");
   buildTools();
   resize();
-  $("hint").textContent = level.hint || level.lesson || "";
-  $("hint").classList.toggle("on", !!(level.hint || level.lesson));
+  $("play").classList.toggle("thinking", !!match.thinkLocked);
+  const opening = coachText(match) || level.hint || level.lesson || "";
+  $("hint").textContent = opening;
+  $("hint").classList.toggle("on", !!opening);
+  $("hint").classList.toggle("coach", !!opening);
   $("hint").classList.remove("lesson");
   audio.play("place");
 }
@@ -194,7 +199,19 @@ function hud() {
   $("foodN").textContent = Math.floor(coreStock(match, "food"));
   $("crewN").textContent = match.kapsels.length;
   const wave = $("waveN");
-  if (match.enemies.length) {
+  $("play").classList.toggle("thinking", !!match.thinkLocked);
+  const speedBtn = $("speed");
+  if (match.thinkLocked) {
+    speedBtn.textContent = "GO";
+    speedBtn.classList.add("go");
+  } else {
+    speedBtn.textContent = speed + "×";
+    speedBtn.classList.remove("go");
+  }
+  if (match.thinkLocked) {
+    wave.textContent = "Think";
+    wave.classList.remove("hot");
+  } else if (match.enemies.length) {
     wave.textContent = "Defend";
     wave.classList.add("hot");
   } else if (match.waves.timer < 900) {
@@ -233,7 +250,14 @@ function hud() {
       match.tutorial.unlockedUi = true;
       buildTools();
     }
-    if (match.time > 7) $("hint").classList.remove("on");
+    const coach = coachText(match);
+    if (coach) {
+      $("hint").textContent = coach;
+      $("hint").classList.add("on", "coach");
+    } else {
+      $("hint").classList.remove("coach");
+      if (!match.mechanics.coach && match.time > 7) $("hint").classList.remove("on");
+    }
   }
 }
 
@@ -343,6 +367,10 @@ function consumeEvents() {
       buzz(6);
     }
     if (ev.type === "hold") audio.play("hold");
+    if (ev.type === "go") {
+      audio.play("go");
+      buzz([10, 24, 12]);
+    }
   }
   match.events = [];
 }
@@ -478,6 +506,7 @@ $("pauseBtn").onclick = () => {
 };
 $("resumeBtn").onclick = () => {
   if (match && match.status === "paused") pause(match);
+  if (match) resumeThink(match);
   $("pauseOv").classList.remove("on");
 };
 $("restartBtn").onclick = () => startLevel(chosen);
@@ -487,6 +516,13 @@ $("pauseMap").onclick = $("endMap").onclick = () => {
 };
 $("endRetry").onclick = () => startLevel(chosen);
 $("speed").onclick = () => {
+  if (match && match.thinkLocked) {
+    resumeThink(match);
+    speed = 1;
+    $("speed").textContent = "1×";
+    $("speed").classList.remove("go");
+    return;
+  }
   speed = speed === 1 ? 2 : speed === 2 ? 3 : 1;
   $("speed").textContent = speed + "×";
 };
@@ -581,7 +617,11 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
     setTool: (t) => match && setTool(match, t),
     tapCell: (x, y) => match && tapCell(match, x, y),
     canPlace: (t, x, y, rot) => match && canPlace(match, t, x, y, rot),
+    resumeThink: () => match && resumeThink(match),
+    coachText: () => match && coachText(match),
+    rotate: () => match && rotate(match),
     setSpeed(n) {
+      if (match && match.thinkLocked) resumeThink(match);
       speed = n;
       $("speed").textContent = n + "×";
     },

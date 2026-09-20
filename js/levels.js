@@ -571,8 +571,10 @@ export const LEVELS = [
     par: 140,
   }),
   L("7-06", 7, "Last Geometry", {
-    lesson: "Quiet geometry. No extra advice.",
-    briefing: "Four waves. Relics sit one I off the plus. Scanner before the unseen, shield before the star. Finish the survey.",
+    lesson: "Scan, then Gun, then Aegis. Two unpaid blueprints jam the hull.",
+    briefing:
+      "Time holds while you place the hull kit. Scan sees cloaks, Gun shoots, Aegis eats flares. Two dashed rooms starve construction. Kiss four relics. Four waves. TAP GO when the geometry feels right.",
+    hint: "Scan first. Then Gun. Then Aegis. Never keep two unpaid blueprints.",
     start: { minerals: 36, food: 18, crew: 6 },
     relics: [
       { x: 2, y: 3 },
@@ -594,6 +596,8 @@ export const LEVELS = [
       overload: true,
       flares: { first: 28, interval: 20, damage: 9, telegraph: 2.8 },
       pieceQueue: true,
+      thinkStart: true,
+      coach: true,
     },
     allowed: [
       "corridor",

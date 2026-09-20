@@ -1,4 +1,4 @@
-const CACHE = "rhyme-v8";
+const CACHE = "rhyme-v9";
 const ASSETS = [
   "./",
   "./index.html",

@@ -180,12 +180,12 @@ const RECRUITS_PER_Q = 2;
 const STOCK_CAP = 8;
 const PANTRY_CAP = 24;
 const CORE_MINERAL_CAP = 36;
-const TURRET_RANGE = 190;
+export const TURRET_RANGE = 190;
 const TURRET_CD = 1.05;
 const TURRET_DMG = 12;
-const SHIELD_R = 4.2;
+export const SHIELD_R = 4.2;
 const HEATER_R = 3.3;
-const SCAN_R = 200;
+export const SCAN_R = 200;
 const OVERCLOCK_SEC = 5;
 const OVERCLOCK_HURT = 9;
 
@@ -655,7 +655,8 @@ export function holdPiece(match) {
 }
 
 function emitFx(match, kind, x, y, hue) {
-  const life = kind === "spark" ? 0.5 : kind === "pulse" ? 0.55 : kind === "burst" ? 0.42 : 0.7;
+  const life =
+    kind === "muzzle" ? 0.22 : kind === "spark" ? 0.9 : kind === "pulse" ? 0.55 : kind === "burst" ? 0.42 : 0.7;
   match.fx.push({ kind, x, y, t: 0, life, hue: hue || "#f3f0e8" });
 }
 
@@ -708,6 +709,7 @@ export function createMatch(level, opts = {}) {
     relics: (level.relics || []).map((r) => ({ ...r, linked: false })),
     relicCells: new Set((level.relics || []).map((d) => key(d.x, d.y))),
     mechanics: { kitchenChain: false, wormholes: false, cloak: false, overload: false, ...(level.mechanics || {}) },
+    thinkLocked: !!(level.mechanics && level.mechanics.thinkStart),
     waves: {
       index: 0,
       timer: (level.waves && level.waves.first) || 9999,
@@ -1443,6 +1445,7 @@ function updateEnemies(match, dt) {
   for (let i = match.enemies.length - 1; i >= 0; i--) {
     const e = match.enemies[i];
     e.wobble += dt * 3;
+    e.hitTimer = Math.max(0, (e.hitTimer || 0) - dt);
     applyGravity(match, e, dt);
     if (!e.target || !e.target.room || e.target.room.dead || !match.grid.get(key(e.target.x, e.target.y))) {
       e.target = nearestCell(match, e.x, e.y);
@@ -1484,6 +1487,9 @@ function updateEnemies(match, dt) {
     if (e.hp <= 0) {
       match.kills += 1;
       emitFx(match, "burst", e.x, e.y, "#e24b52");
+      emitFx(match, "pulse", e.x, e.y, "#f3f0e8");
+      match.pulse = Math.max(match.pulse, 0.28);
+      match.shake = Math.max(match.shake, 0.18);
       match.enemies.splice(i, 1);
       match.events.push({ type: "kill" });
     }
@@ -1509,6 +1515,8 @@ function updateEnemies(match, dt) {
       room.aim = Math.atan2(best.y - room.cy, best.x - room.cx);
       match.shots.push({ x: room.cx, y: room.cy, target: best, speed: 340 });
       match.shotsFired += 1;
+      match.pulse = Math.max(match.pulse, 0.16);
+      emitFx(match, "muzzle", room.cx, room.cy, "#f8f4e8");
       match.events.push({ type: "shoot" });
     }
   }
@@ -1526,6 +1534,8 @@ function updateEnemies(match, dt) {
     const step = s.speed * dt;
     if (d <= step + e.r) {
       e.hp -= TURRET_DMG;
+      e.hitTimer = 0.2;
+      emitFx(match, "spark", e.x, e.y, "#f3f0e8");
       match.shots.splice(i, 1);
     } else {
       s.x += (dx / d) * step;
@@ -1684,6 +1694,15 @@ export function step(match, dt) {
     match.shake = Math.max(0, match.shake - dt);
     return;
   }
+  if (match.thinkLocked) {
+    match.shake = Math.max(0, match.shake - dt);
+    match.pulse = Math.max(0, match.pulse - dt);
+    for (let i = match.fx.length - 1; i >= 0; i--) {
+      match.fx[i].t += dt;
+      if (match.fx[i].t >= match.fx[i].life) match.fx.splice(i, 1);
+    }
+    return;
+  }
   match.time += dt;
   match.shake = Math.max(0, match.shake - dt);
   match.pulse = Math.max(0, match.pulse - dt);
@@ -1720,6 +1739,58 @@ export function step(match, dt) {
 export function pause(match) {
   if (match.status === "playing") match.status = "paused";
   else if (match.status === "paused") match.status = "playing";
+}
+
+export function resumeThink(match) {
+  if (!match.thinkLocked) return false;
+  match.thinkLocked = false;
+  match.pulse = 0.4;
+  match.events.push({ type: "go" });
+  return true;
+}
+
+function unpaidCount(match) {
+  return match.rooms.filter((r) => !r.built && r.type !== "core").length;
+}
+
+function hasJob(match, type) {
+  return match.rooms.some((r) => r.type === type && !r.dead);
+}
+
+export function coachText(match) {
+  if (!match) return "";
+  if (!(match.mechanics && match.mechanics.coach)) {
+    return match.hint || (match.level && match.level.lesson) || "";
+  }
+  const jam = unpaidCount(match) >= 2;
+  if (jam && !match.thinkLocked) {
+    return "Two unpaid blueprints jam the hull. Let haulers finish one.";
+  }
+  if (!hasJob(match, "scanner")) {
+    return "Scan first. Cloaked scouts ignore guns they cannot see.";
+  }
+  if (!hasJob(match, "weapons")) {
+    return "Staff a Gun on the hull before the first wave.";
+  }
+  if (!hasJob(match, "shield")) {
+    return "Aegis before the star. Flares cook an empty scanner.";
+  }
+  if (jam) {
+    return "Two unpaid blueprints jam the hull. Let haulers finish one.";
+  }
+  if (match.thinkLocked) {
+    return "Hull kit down. TAP GO when the geometry feels right.";
+  }
+  const needRelics = (match.win && match.win.relics) || 0;
+  const linked = match.relics.filter((r) => r.linked).length;
+  if (needRelics && linked < needRelics) {
+    return "Kiss the four monuments. One I off the plus. Two dashed rooms is a jam.";
+  }
+  const needWaves = (match.win && match.win.surviveWaves) || 0;
+  if (needWaves && match.wavesCleared < needWaves) {
+    return "Hold the hull. Scan sees, Gun shoots, Aegis eats the star.";
+  }
+  return "Quiet geometry. Finish the survey.";
 }
 
 export function gridAt(match, px, py) {
