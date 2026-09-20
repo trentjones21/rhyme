@@ -380,18 +380,22 @@ function finish() {
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  if (screen === "play" && match) {
-    if (match.status === "playing") {
-      for (let i = 0; i < speed; i++) step(match, dt);
-      consumeEvents();
+  try {
+    if (screen === "play" && match) {
+      if (match.status === "playing") {
+        for (let i = 0; i < speed; i++) step(match, dt);
+        consumeEvents();
+      }
+      const canvas = $("stage");
+      const ctx = canvas.getContext("2d");
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawWorld(ctx, match, { w: canvas.clientWidth, h: canvas.clientHeight, ghost }, now);
+      hud();
+      finish();
     }
-    const canvas = $("stage");
-    const ctx = canvas.getContext("2d");
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawWorld(ctx, match, { w: canvas.clientWidth, h: canvas.clientHeight, ghost }, now);
-    hud();
-    finish();
+  } catch (err) {
+    console.warn(err);
   }
   requestAnimationFrame(loop);
 }

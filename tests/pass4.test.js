@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { LEVELS, levelById } from "../js/levels.js";
 import { createMatch, step, tapCell, setTool, canPlace, coreStock, playerShape, rotateShape, assignTo, recall } from "../js/sim.js";
 import { shouldShowInstallHint } from "../js/install.js";
@@ -563,5 +564,15 @@ describe("campaign still has forty-two stations", () => {
   it("did not drop a world while retuning the finale", () => {
     assert.equal(LEVELS.length, 42);
     assert.equal(levelById("7-06").id, "7-06");
+  });
+});
+
+describe("incoming telegraph renderer", () => {
+  it("does not read a free now that kills the frame loop", () => {
+    const src = readFileSync(new URL("../js/render.js", import.meta.url), "utf8");
+    const i = src.indexOf("function drawVignette");
+    assert.ok(i >= 0);
+    const body = src.slice(i, src.indexOf("export { ROOMS }", i));
+    assert.equal(body.includes("Math.sin(now"), false, "drawVignette references free `now`");
   });
 });

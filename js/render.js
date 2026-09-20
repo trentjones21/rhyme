@@ -678,7 +678,7 @@ function drawVignette(ctx, match, w, h) {
     ctx.fillRect(0, 0, w, 8);
     ctx.fillRect(0, h - 8, w, 8);
     if (spec.warned) {
-      const pulse = 0.08 + Math.sin(now * 0.012) * 0.05;
+      const pulse = 0.08 + Math.sin((match.time || 0) * 12) * 0.05;
       ctx.strokeStyle = `rgba(226,75,82,${0.22 + pulse})`;
       ctx.lineWidth = 2;
       ctx.beginPath();
