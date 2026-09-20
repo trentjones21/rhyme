@@ -576,6 +576,7 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
     getMatch: () => match,
     setTool: (t) => match && setTool(match, t),
     tapCell: (x, y) => match && tapCell(match, x, y),
+    canPlace: (t, x, y, rot) => match && canPlace(match, t, x, y, rot),
     setSpeed(n) {
       speed = n;
       $("speed").textContent = n + "×";
