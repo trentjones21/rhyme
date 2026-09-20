@@ -620,6 +620,77 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
     resumeThink: () => match && resumeThink(match),
     coachText: () => match && coachText(match),
     rotate: () => match && rotate(match),
+    place(type) {
+      if (!match) return false;
+      setTool(match, type);
+      for (let rot = 0; rot < 4; rot++) {
+        match.rot = rot;
+        for (let y = 0; y < match.rows; y++) {
+          for (let x = 0; x < match.cols; x++) {
+            if (canPlace(match, type, x, y, rot) && tapCell(match, x, y)) return true;
+          }
+        }
+      }
+      return false;
+    },
+    assignType(type) {
+      if (!match) return false;
+      const room = match.rooms.find((r) => r.type === type && !r.dead);
+      if (!room) return false;
+      setTool(match, "assign");
+      return tapCell(match, room.cells[0].x, room.cells[0].y);
+    },
+    kissRelic() {
+      if (!match) return false;
+      const spots = match.relics.filter((r) => !r.linked);
+      if (!spots.length) return true;
+      setTool(match, "corridor");
+      let best = null;
+      for (let rot = 0; rot < 4; rot++) {
+        match.rot = rot;
+        for (let y = 0; y < match.rows; y++) {
+          for (let x = 0; x < match.cols; x++) {
+            if (!canPlace(match, "corridor", x, y, rot)) continue;
+            const cells = rotateShape(playerShape(match, "corridor"), rot).map(([dx, dy]) => ({
+              x: x + dx,
+              y: y + dy,
+            }));
+            let min = Infinity;
+            let kiss = 0;
+            for (const c of cells) {
+              for (const s of spots) {
+                const man = Math.abs(c.x - s.x) + Math.abs(c.y - s.y);
+                min = Math.min(min, man);
+                if (man <= 1) kiss += 1;
+              }
+            }
+            const sc = kiss * 50 - min;
+            if (!best || sc > best.sc) best = { x, y, rot, sc };
+          }
+        }
+      }
+      if (!best) return false;
+      match.rot = best.rot;
+      return tapCell(match, best.x, best.y);
+    },
+    snap() {
+      if (!match) return null;
+      return {
+        status: match.status,
+        thinkLocked: !!match.thinkLocked,
+        time: Math.round(match.time * 10) / 10,
+        food: Math.floor(coreStock(match, "food")),
+        mineral: Math.floor(coreStock(match, "mineral")),
+        relics: match.relics.filter((r) => r.linked).length,
+        waves: match.wavesCleared,
+        unpaid: match.rooms.filter((r) => !r.built && r.type !== "core").length,
+        stars: match.stars,
+        coach: coachText(match),
+        hp: Math.round(match.core.hp),
+        deaths: match.deaths,
+        loseReason: match.loseReason,
+      };
+    },
     setSpeed(n) {
       if (match && match.thinkLocked) resumeThink(match);
       speed = n;
