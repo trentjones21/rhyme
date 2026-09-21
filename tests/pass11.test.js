@@ -142,9 +142,9 @@ describe("ship-feel: chrome, 60fps, haptics, cache", () => {
     const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
     const app = readFileSync(new URL("../js/app.js", import.meta.url), "utf8");
     const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
-    assert.match(html, /app\.js\?v=31/);
-    assert.match(app, /sw\.js\?v=21/);
-    assert.match(sw, /rhyme-v21/);
+    assert.match(html, /app\.js\?v=32/);
+    assert.match(app, /sw\.js\?v=22/);
+    assert.match(sw, /rhyme-v22/);
   });
 });
 

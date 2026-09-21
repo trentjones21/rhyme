@@ -365,21 +365,18 @@ let lastShootAt = 0;
 function consumeEvents() {
   if (!match) return;
   for (const ev of match.events) {
-    if (ev.type === "place") audio.play("place");
-    if (ev.type === "assign") {
-      audio.play("assign");
-      buzz(12);
-    }
-    if (ev.type === "built") audio.play("built");
-    if (ev.type === "incoming") {
-      audio.play("incoming");
+    if (ev.type === "place") {
+      audio.play("place");
       buzz(8);
     }
-    if (ev.type === "wave") {
-      audio.play("wave");
-      buzz([16, 40, 16]);
+    if (ev.type === "assign") {
+      audio.play("assign");
+      buzz(8);
     }
-    if (ev.type === "win") buzz([12, 40, 12, 40, 24]);
+    if (ev.type === "tick") audio.play("tick");
+    if (ev.type === "built") audio.play("built");
+    if (ev.type === "incoming") audio.play("incoming");
+    if (ev.type === "wave") audio.play("wave");
     if (ev.type === "flare") audio.play("flare");
     if (ev.type === "shoot") {
       const now = performance.now();
@@ -392,30 +389,15 @@ function consumeEvents() {
     if (ev.type === "cleared") audio.play("cleared");
     if (ev.type === "win") audio.play("win");
     if (ev.type === "recruit") audio.play("recruit");
-    if (ev.type === "grow") {
-      audio.play("grow");
-      buzz(8);
-    }
-    if (ev.type === "mine") {
-      audio.play("mine");
-      buzz(14);
-    }
-    if (ev.type === "cook") {
-      audio.play("cook");
-      buzz(10);
-    }
-    if (ev.type === "haul") {
-      audio.play("haul");
-      buzz(6);
-    }
+    if (ev.type === "grow") audio.play("grow");
+    if (ev.type === "mine") audio.play("mine");
+    if (ev.type === "cook") audio.play("cook");
+    if (ev.type === "haul") audio.play("haul");
     if (ev.type === "hold") audio.play("hold");
-    if (ev.type === "relic") {
-      audio.play("relic");
-      buzz([8, 20, 16]);
-    }
+    if (ev.type === "relic") audio.play("relic");
     if (ev.type === "go") {
       audio.play("go");
-      buzz([10, 24, 12]);
+      buzz(8);
     }
   }
   match.events = [];
@@ -509,7 +491,6 @@ function onCanvasTap(ev) {
     if (best) ok = tapCell(match, best.x, best.y);
   }
   if (!ok && match.tool !== "assign") audio.play("error");
-  else if (ok) buzz(10);
   ghost = null;
 }
 
@@ -669,7 +650,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=21").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=22").catch(() => {});
 }
 
 renderTitle();

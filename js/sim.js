@@ -1224,6 +1224,7 @@ function stepAlong(match, k, dt) {
     k.x = p.x;
     k.y = p.y;
     k.path.shift();
+    match.events.push({ type: "tick" });
     return k.path.length === 0;
   }
   k.x += (dx / d) * step;
