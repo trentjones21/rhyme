@@ -14,6 +14,9 @@ import {
   coachText,
   rotateShape,
   playerShape,
+  gunRange,
+  remapLayout,
+  computeLayout,
 } from "../js/sim.js";
 
 function tick(match, seconds) {
@@ -286,7 +289,7 @@ describe("a garden-first thumb wins Last Geometry", () => {
     const px = m.layout.ox + (well.x + 0.5) * m.layout.cell;
     const py = m.layout.oy + (well.y + 0.5) * m.layout.cell;
     const reach = Math.hypot(px - gun.cx, py - gun.cy);
-    assert.ok(reach < 250, `well is ${reach.toFixed(0)}px from the hull gun`);
+    assert.ok(reach < gunRange(m), `well is ${reach.toFixed(0)}px from the hull gun; range ${gunRange(m).toFixed(0)}`);
     m.enemies.push({
       x: px,
       y: py,
@@ -306,6 +309,13 @@ describe("a garden-first thumb wins Last Geometry", () => {
     });
     tick(m, 0.2);
     assert.ok(m.shots.length >= 1 || m.shotsFired >= 1, "gun cannot see the well");
+  });
+
+  it("scales gun range with a tall portrait cell", () => {
+    const m = createMatch(levelById("7-06"), { seed: 11 });
+    remapLayout(m, computeLayout(430, 932, m.cols, m.rows, { top: 8, bottom: 8, left: 8, right: 8 }));
+    assert.ok(m.layout.cell >= 40, m.layout.cell);
+    assert.ok(gunRange(m) >= m.layout.cell * 7.4);
   });
 
   it("wins 7-06 without captainBeat if meals go down before monuments", () => {

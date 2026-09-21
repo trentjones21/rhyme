@@ -1,4 +1,4 @@
-import { ROOMS, canPlace, SCAN_R } from "./sim.js";
+import { ROOMS, canPlace, SCAN_R, scanRange } from "./sim.js";
 
 const VOID = "#07080d";
 let stars = null;
@@ -283,7 +283,7 @@ function drawScanCones(ctx, match, now) {
     const staff = match.kapsels.some((k) => k.assignment === room.id);
     if (!staff) continue;
     const sweep = (now * 0.0024 + room.id) % (Math.PI * 2);
-    const r = Math.min(SCAN_R, match.layout.cell * 5.4);
+    const r = scanRange(match);
     ctx.save();
     ctx.translate(room.cx, room.cy);
     const cone = ctx.createRadialGradient(0, 0, 4, 0, 0, r);

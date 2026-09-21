@@ -189,6 +189,14 @@ export const SCAN_R = 200;
 const OVERCLOCK_SEC = 5;
 const OVERCLOCK_HURT = 9;
 
+export function gunRange(match) {
+  return Math.max(TURRET_RANGE, match.layout.cell * 7.4);
+}
+
+export function scanRange(match) {
+  return Math.max(SCAN_R, match.layout.cell * 6.4);
+}
+
 export function rotateShape(cells, turns) {
   let out = cells.map(([x, y]) => [x, y]);
   const n = ((turns % 4) + 4) % 4;
@@ -1527,7 +1535,7 @@ function updateEnemies(match, dt) {
     for (const e of match.enemies) {
       if (e.cloaked) continue;
       const d = dist(e.x, e.y, room.cx, room.cy);
-      if (d < TURRET_RANGE && d < bestD) {
+      if (d < gunRange(match) && d < bestD) {
         best = e;
         bestD = d;
       }
@@ -1589,7 +1597,7 @@ function updateScanners(match) {
     if (room.type !== "scanner" || !room.built || room.dead) continue;
     if (staffed(match, room) < 1) continue;
     for (const e of match.enemies) {
-      if (dist(e.x, e.y, room.cx, room.cy) <= SCAN_R) e.cloaked = false;
+      if (dist(e.x, e.y, room.cx, room.cy) <= scanRange(match)) e.cloaked = false;
     }
   }
 }
