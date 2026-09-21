@@ -25,7 +25,7 @@ import {
   thumbBeat,
   placeNearCore,
 } from "./sim.js";
-import { LEVELS, WORLDS, levelById, nextLevel, levelsInWorld } from "./levels.js";
+import { LEVELS, WORLDS, levelById, nextLevel, levelsInWorld, worldLook } from "./levels.js";
 import { loadSave, writeSave, completeLevel, worldUnlocked, campaignStats } from "./save.js";
 import { drawWorld } from "./render.js";
 import * as audio from "./audio.js";
@@ -127,8 +127,17 @@ function renderLevels() {
   }
 }
 
+function applyWorldChrome(level) {
+  const look = worldLook(level.world);
+  $("play").dataset.world = String(level.world);
+  $("brief").dataset.world = String(level.world);
+  $("play").style.setProperty("--world", look.accent);
+  $("brief").style.setProperty("--world", look.accent);
+}
+
 function openBrief(level) {
   chosen = level;
+  applyWorldChrome(level);
   $("briefId").textContent = level.id;
   $("briefLesson").textContent = level.lesson || "";
   $("briefName").textContent = level.name;
@@ -146,6 +155,7 @@ function startLevel(level) {
   $("endRetry").hidden = false;
   $("play").classList.remove("ended");
   match = createMatch(level, { seed: (Date.now() % 9999) + 1 });
+  applyWorldChrome(level);
   show("play");
   buildTools();
   resize();
@@ -155,7 +165,8 @@ function startLevel(level) {
   $("hint").classList.toggle("on", !!opening);
   $("hint").classList.toggle("coach", !!opening);
   $("hint").classList.remove("lesson");
-  audio.play("place");
+  const look = worldLook(level.world);
+  audio.play(look.stinger);
 }
 
 function buildTools() {
@@ -613,7 +624,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=15").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=16").catch(() => {});
 }
 
 renderTitle();
@@ -641,6 +652,7 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
       $("endRetry").hidden = false;
       $("play").classList.remove("ended");
       match = createMatch(level, { seed: seed || 11 });
+      applyWorldChrome(level);
       show("play");
       buildTools();
       resize();

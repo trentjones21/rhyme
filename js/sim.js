@@ -1,5 +1,7 @@
 // Pure simulation for Rhyme. No DOM. Deterministic when seeded.
 
+import { roomLabel } from "./levels.js";
+
 export const PIECES = {
   I: [
     [0, 0],
@@ -599,6 +601,9 @@ function spawnKapsel(match, room) {
     carry: null,
     workTimer: 0,
     retry: 0,
+    ox: 0,
+    oy: 0,
+    trailT: 0,
   };
   match.kapsels.push(k);
   return k;
@@ -672,9 +677,11 @@ function emitFx(match, kind, x, y, hue) {
           ? 0.55
           : kind === "burst"
             ? 0.42
-            : kind === "kiss"
-              ? 1.15
-              : 0.7;
+        : kind === "kiss"
+          ? 1.15
+          : kind === "assign"
+            ? 0.45
+            : 0.7;
   match.fx.push({ kind, x, y, t: 0, life, hue: hue || "#f3f0e8" });
 }
 
@@ -727,6 +734,7 @@ export function createMatch(level, opts = {}) {
     shots: [],
     fx: [],
     floats: [],
+    trails: [],
     core: null,
     tool: "assign",
     rot: 0,
@@ -930,6 +938,8 @@ export function assignTo(match, room) {
   k.retry = 0;
   match.selected = room.id;
   match.events.push({ type: "assign", room: room.id });
+  emitFx(match, "assign", k.x, k.y, "#f3f0e8");
+  emitFx(match, "pulse", room.cx, room.cy, room.def.hue);
   if (match.tutorial && match.tutorial.needAssign) {
     match.tutorial.needAssign = false;
     match.tutorial.assigned = true;
@@ -1354,6 +1364,14 @@ function updateKapsels(match, dt) {
         else k.retry = 0.28;
       }
     } else if (k.state === "walking") {
+      if (k.carry) {
+        k.trailT = (k.trailT || 0) + dt;
+        if (k.trailT >= 0.1) {
+          k.trailT = 0;
+          match.trails.push({ x: k.x, y: k.y, resource: k.carry, t: 0, life: 0.55 });
+          if (match.trails.length > 96) match.trails.shift();
+        }
+      }
       if (stepAlong(match, k, dt)) {
         k.state = "working";
         k.workTimer = 0;
@@ -1361,6 +1379,32 @@ function updateKapsels(match, dt) {
     } else {
       work(match, k, dt);
     }
+  }
+  applyCrowd(match);
+}
+
+function applyCrowd(match) {
+  const groups = new Map();
+  for (const k of match.kapsels) {
+    const g = atPixel(match, k.x, k.y);
+    const id = g.x + "," + g.y;
+    if (!groups.has(id)) groups.set(id, []);
+    groups.get(id).push(k);
+  }
+  for (const pack of groups.values()) {
+    pack.sort((a, b) => a.id - b.id);
+    const n = pack.length;
+    pack.forEach((k, i) => {
+      if (n <= 1) {
+        k.ox = 0;
+        k.oy = 0;
+        return;
+      }
+      const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
+      const r = Math.min(match.layout.cell * 0.26, 12);
+      k.ox = Math.cos(ang) * r;
+      k.oy = Math.sin(ang) * r;
+    });
   }
 }
 
@@ -1784,6 +1828,10 @@ export function step(match, dt) {
     match.floats[i].t += dt;
     if (match.floats[i].t >= match.floats[i].life) match.floats.splice(i, 1);
   }
+  for (let i = (match.trails || []).length - 1; i >= 0; i--) {
+    match.trails[i].t += dt;
+    if (match.trails[i].t >= match.trails[i].life) match.trails.splice(i, 1);
+  }
   for (let i = match.fx.length - 1; i >= 0; i--) {
     match.fx[i].t += dt;
     if (match.fx[i].t >= match.fx[i].life) match.fx.splice(i, 1);
@@ -2082,7 +2130,7 @@ export function objectiveText(match) {
   if (w.rooms) {
     for (const [type, n] of Object.entries(w.rooms)) {
       const have = match.rooms.filter((r) => r.type === type && r.built).length;
-      parts.push(`${ROOMS[type].name} ${have}/${n}`);
+      parts.push(`${roomLabel(type, match.level.world)} ${have}/${n}`);
     }
   }
   if (w.relics != null) parts.push(`Relics ${match.relics.filter((r) => r.linked).length}/${w.relics}`);

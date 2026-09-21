@@ -1,4 +1,5 @@
 import { ROOMS, canPlace, SCAN_R, scanRange } from "./sim.js";
+import { worldLook } from "./levels.js";
 
 const VOID = "#07080d";
 let stars = null;
@@ -48,23 +49,24 @@ export function drawWorld(ctx, match, view, now) {
     ctx.translate((Math.random() - 0.5) * match.shake * 10, (Math.random() - 0.5) * match.shake * 10);
   }
 
+  const look = worldLook(match.level && match.level.world);
   const g = ctx.createRadialGradient(w * 0.32, h * 0.18, 12, w * 0.48, h * 0.42, Math.max(w, h) * 0.78);
-  g.addColorStop(0, "#22283a");
-  g.addColorStop(0.28, "#151826");
-  g.addColorStop(0.62, "#0c0f16");
-  g.addColorStop(1, "#040406");
+  g.addColorStop(0, look.nebula0);
+  g.addColorStop(0.28, look.nebula1 || "#151826");
+  g.addColorStop(0.62, look.nebula2 || "#0c0f16");
+  g.addColorStop(1, look.void || "#040406");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
-  ctx.fillStyle = "rgba(90, 120, 170, 0.16)";
+  ctx.fillStyle = look.haze;
   ctx.beginPath();
   ctx.ellipse(w * 0.22, h * 0.06, w * 0.52, 82, -0.18, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "rgba(110, 55, 80, 0.12)";
+  ctx.fillStyle = look.haze2 || "rgba(110, 55, 80, 0.12)";
   ctx.beginPath();
   ctx.ellipse(w * 0.86, h * 0.7, 140, 200, 0.42, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "rgba(110, 195, 201, 0.05)";
+  ctx.fillStyle = look.mote || "rgba(110, 195, 201, 0.05)";
   ctx.beginPath();
   ctx.ellipse(w * 0.55, h * 0.22, w * 0.4, 40, 0.1, 0, Math.PI * 2);
   ctx.fill();
@@ -95,7 +97,7 @@ export function drawWorld(ctx, match, view, now) {
   }
 
   const L = match.layout;
-  ctx.strokeStyle = "rgba(255,255,255,0.045)";
+  ctx.strokeStyle = look.grid || "rgba(255,255,255,0.045)";
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let i = 0; i <= match.cols; i++) {
@@ -117,6 +119,8 @@ export function drawWorld(ctx, match, view, now) {
   drawShieldAuras(ctx, match, now);
   drawScanCones(ctx, match, now);
   drawRooms(ctx, match, now);
+  drawTrails(ctx, match);
+  drawAssignBeams(ctx, match);
   drawKapsels(ctx, match);
   drawEnemies(ctx, match, now);
   drawShots(ctx, match);
@@ -578,32 +582,64 @@ function drawStock(ctx, room) {
   });
 }
 
+function drawTrails(ctx, match) {
+  for (const t of match.trails || []) {
+    const a = Math.max(0, 1 - t.t / t.life);
+    const col = t.resource === "mineral" ? "224,120,152" : t.resource === "food" ? "240,194,74" : "111,191,106";
+    ctx.fillStyle = `rgba(${col},${0.5 * a})`;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 2.6 * a + 0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawAssignBeams(ctx, match) {
+  ctx.save();
+  ctx.setLineDash([3, 5]);
+  ctx.lineWidth = 1.2;
+  for (const k of match.kapsels) {
+    if (!k.assignment) continue;
+    const room = match.rooms.find((r) => r.id === k.assignment);
+    if (!room || room.type === "core" || room.dead) continue;
+    const x = k.x + (k.ox || 0);
+    const y = k.y + (k.oy || 0);
+    ctx.strokeStyle = "rgba(243,240,232,0.14)";
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(room.cx, room.cy);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawKapsels(ctx, match) {
   for (const k of match.kapsels) {
     const bob = k.state === "idle" ? 0 : Math.sin(k.bob) * 1.1;
+    const x = k.x + (k.ox || 0);
+    const y = k.y + (k.oy || 0);
     if (k.state === "walking" && k.path && k.path[0]) {
       const L = match.layout;
       const tx = L.ox + (k.path[0].x + 0.5) * L.cell;
       const ty = L.oy + (k.path[0].y + 0.5) * L.cell;
-      const dx = tx - k.x;
-      const dy = ty - k.y;
+      const dx = tx - x;
+      const dy = ty - y;
       const d = Math.hypot(dx, dy) || 1;
-      ctx.strokeStyle = "rgba(243,240,232,0.18)";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = k.carry ? "rgba(240,194,74,0.35)" : "rgba(243,240,232,0.22)";
+      ctx.lineWidth = 2.2;
       ctx.beginPath();
-      ctx.moveTo(k.x, k.y + 2);
-      ctx.lineTo(k.x - (dx / d) * 10, k.y - (dy / d) * 10 + 2);
+      ctx.moveTo(x, y + 2);
+      ctx.lineTo(x - (dx / d) * 10, y - (dy / d) * 10 + 2);
       ctx.stroke();
     }
     ctx.fillStyle = "rgba(0,0,0,0.28)";
     ctx.beginPath();
-    ctx.ellipse(k.x, k.y + 7, 5.5, 2.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y + 7, 5.5, 2.2, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#f3f0e8";
-    round(ctx, k.x - 4.5, k.y - 8 + bob, 9, 15, 4);
+    round(ctx, x - 4.5, y - 8 + bob, 9, 15, 4);
     ctx.fill();
     ctx.fillStyle = "rgba(20,22,28,0.55)";
-    ctx.fillRect(k.x - 2.2, k.y - 4 + bob, 4.4, 2.2);
+    ctx.fillRect(x - 2.2, y - 4 + bob, 4.4, 2.2);
     const pip =
       k.job && k.job.kind === "build"
         ? "#8d6b4a"
@@ -615,15 +651,17 @@ function drawKapsels(ctx, match) {
               ? "#7b88a3"
               : k.job && k.job.kind === "cook"
                 ? "#f0c24a"
-                : null;
+                : k.job && k.job.kind === "haul"
+                  ? "#e07898"
+                  : null;
     if (pip) {
       ctx.fillStyle = pip;
-      ctx.fillRect(k.x + 3.2, k.y - 9 + bob, 3.2, 3.2);
+      ctx.fillRect(x + 3.2, y - 9 + bob, 3.2, 3.2);
     }
     if (k.carry) {
       const col = k.carry === "mineral" ? "#e07898" : k.carry === "food" ? "#f0c24a" : "#6fbf6a";
       ctx.fillStyle = col;
-      ctx.fillRect(k.x - 3.5, k.y - 16 + bob, 7, 6);
+      ctx.fillRect(x - 3.5, y - 16 + bob, 7, 6);
     }
   }
 }
@@ -761,6 +799,16 @@ function drawFx(ctx, match, now) {
       ctx.beginPath();
       ctx.arc(f.x, f.y, 14 + f.t * 22, 0, Math.PI * 2);
       ctx.stroke();
+    } else if (f.kind === "assign") {
+      ctx.strokeStyle = f.hue || "#f3f0e8";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 4 + f.t * 22, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(243,240,232,${0.18 * a})`;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 3 + f.t * 8, 0, Math.PI * 2);
+      ctx.fill();
     } else if (f.kind === "pulse") {
       ctx.strokeStyle = f.hue || "#f3f0e8";
       ctx.lineWidth = 2;

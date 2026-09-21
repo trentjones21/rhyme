@@ -86,6 +86,12 @@ export const TONES = {
   hold: { freq: 440, dur: 0.06, type: "triangle", vol: 0.035, slide: 330 },
   go: { freq: 392, dur: 0.14, type: "sine", vol: 0.05, slide: 620 },
   relic: { freq: 523, dur: 0.22, type: "sine", vol: 0.05, slide: 784 },
+  dock: { freq: 262, dur: 0.18, type: "sine", vol: 0.045, slide: 392 },
+  supply: { freq: 330, dur: 0.2, type: "triangle", vol: 0.05, slide: 494 },
+  solar: { freq: 110, dur: 0.28, type: "sine", vol: 0.04, slide: 196 },
+  fold: { freq: 415, dur: 0.2, type: "sine", vol: 0.045, slide: 622 },
+  frost: { freq: 784, dur: 0.16, type: "sine", vol: 0.04, slide: 988 },
+  ghost: { freq: 196, dur: 0.24, type: "triangle", vol: 0.04, slide: 147 },
   cleared: { freq: 620, dur: 0.16, type: "sine", vol: 0.045, slide: 880 },
 };
 
@@ -133,5 +139,11 @@ export function play(name, when) {
   if (name === "incoming") setTimeout(() => beep(180, 0.1, "sine", 0.03, 140), 90);
   if (name === "kill") setTimeout(() => beep(990, 0.05, "sine", 0.025), 40);
   if (name === "go") setTimeout(() => beep(523, 0.16, "sine", 0.04, 784), 90);
+  if (name === "dock") setTimeout(() => beep(392, 0.14, "sine", 0.03, 523), 80);
+  if (name === "supply") setTimeout(() => beep(494, 0.14, "triangle", 0.03, 392), 90);
+  if (name === "solar") setTimeout(() => beep(165, 0.18, "sine", 0.03, 98), 100);
+  if (name === "fold") setTimeout(() => beep(622, 0.18, "sine", 0.03, 311), 80);
+  if (name === "frost") setTimeout(() => beep(988, 0.12, "sine", 0.028, 784), 70);
+  if (name === "ghost") setTimeout(() => beep(147, 0.2, "triangle", 0.03, 98), 110);
   return true;
 }

@@ -177,6 +177,41 @@ h1 { font-size: 42px; letter-spacing: 0.28em; font-weight: 560; margin: 18px 0 8
 .bodycopy { color: var(--muted); line-height: 1.5; font-size: 16px; }
 
 #play { position: relative; }
+#play[data-world="1"] { --world: #8d6b4a; }
+#play[data-world="2"] { --world: #5ea86a; }
+#play[data-world="3"] { --world: #e07a4a; }
+#play[data-world="4"] { --world: #e8d9a0; }
+#play[data-world="5"] { --world: #9b7ad4; }
+#play[data-world="6"] { --world: #70b4e0; }
+#play[data-world="7"] { --world: #7b88a3; }
+#play[data-world] #hud {
+  box-shadow: inset 3px 0 0 var(--world), inset 0 -1px 0 rgba(243,240,232,0.04);
+}
+#play[data-world="2"] #hud {
+  background: linear-gradient(180deg, rgba(18, 34, 22, 0.78), rgba(7, 13, 8, 0.12) 70%, rgba(7, 8, 13, 0));
+}
+#play[data-world="3"] #hud {
+  background: linear-gradient(180deg, rgba(42, 22, 14, 0.8), rgba(13, 7, 6, 0.12) 70%, rgba(7, 8, 13, 0));
+}
+#play[data-world="4"] #hud {
+  background: linear-gradient(180deg, rgba(34, 30, 18, 0.78), rgba(13, 12, 7, 0.12) 70%, rgba(7, 8, 13, 0));
+}
+#play[data-world="5"] #hud {
+  background: linear-gradient(180deg, rgba(28, 18, 42, 0.8), rgba(10, 8, 16, 0.12) 70%, rgba(7, 8, 13, 0));
+}
+#play[data-world="6"] #hud {
+  background: linear-gradient(180deg, rgba(14, 28, 40, 0.8), rgba(6, 10, 16, 0.12) 70%, rgba(7, 8, 13, 0));
+}
+#play[data-world="7"] #hud {
+  background: linear-gradient(180deg, rgba(18, 20, 28, 0.82), rgba(7, 8, 13, 0.12) 70%, rgba(7, 8, 13, 0));
+}
+#brief[data-world] .lesson { color: var(--world, #e8d9a0); }
+#brief[data-world="2"] { --world: #5ea86a; }
+#brief[data-world="3"] { --world: #e07a4a; }
+#brief[data-world="4"] { --world: #e8d9a0; }
+#brief[data-world="5"] { --world: #9b7ad4; }
+#brief[data-world="6"] { --world: #70b4e0; }
+#brief[data-world="7"] { --world: #7b88a3; }
 #hud {
   display: grid;
   grid-template-columns: 52px 1fr 52px;
