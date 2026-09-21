@@ -651,7 +651,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=24").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=25").catch(() => {});
 }
 
 renderTitle();

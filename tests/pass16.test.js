@@ -35,35 +35,35 @@ function cssBlock(css, start, end) {
   return css.slice(a, b < 0 ? undefined : b);
 }
 
-describe("Last Geometry tools all fit on the 430pt thumb dock", () => {
-  it("wraps the palette so Grow is not clipped off the right", () => {
-    const css = readFileSync(new URL("../css/rhyme.css", import.meta.url), "utf8");
-    const tools = cssBlock(css, "#tools {", ".tool {");
-    assert.match(tools, /flex-wrap:\s*wrap|grid-template-columns/);
-    assert.doesNotMatch(tools, /overflow-x:\s*auto/);
-    const tile = cssBlock(css, ".tool {", ".tool.on");
-    assert.match(tile, /min-height:\s*44px/);
-    assert.match(tile, /min-width:\s*44px/);
-
-    const palette = paletteFor(levelById("7-06"));
-    assert.ok(palette.includes("garden"), "Grow missing from the finale palette");
-    assert.ok(palette.includes("kitchen"));
-    assert.ok(palette.length >= 8, palette.length);
-    assert.equal(palette.includes("heater"), false);
-
-    const inner = 430 - 20 - 4;
-    const gap = 6;
-    const min = 44;
-    const cols = Math.floor((inner + gap) / (min + gap));
-    assert.ok(cols >= 7, "dock cannot seat seven 44pt tools: cols=" + cols);
-    assert.ok(Math.ceil(palette.length / cols) <= 2, "finale tools spill past two thumb rows");
-
-    const app = readFileSync(new URL("../js/app.js", import.meta.url), "utf8");
-    assert.match(app, /garden:\s*"Grow"/);
+describe("Spine dock stays TAP HALL WRECK", () => {
+  it("does not grow extra toys on 1-01", () => {
+    assert.deepEqual(paletteFor(levelById("1-01")), ["assign", "corridor", "salvage"]);
   });
 });
 
-describe("thumb dock does not mute Spine or Last Geometry", () => {
+describe("Last Geometry dock is only the tools the station needs", () => {
+  it("drops Heat, Gate, Berth, Beacon, and Over from the finale strip", () => {
+    const palette = paletteFor(levelById("7-06"));
+    const need = ["assign", "corridor", "scanner", "weapons", "shield", "garden", "kitchen", "extractor", "salvage"];
+    for (const tool of need) assert.ok(palette.includes(tool), "missing " + tool);
+    for (const dump of ["heater", "gate", "quarters", "beacon", "overload"]) {
+      assert.equal(palette.includes(dump), false, dump + " should not be on Last Geometry");
+    }
+    assert.equal(palette.length, need.length, palette.join(","));
+    assert.ok(paletteFor(levelById("7-03")).includes("overload"), "Overclock lost Over");
+    assert.ok(paletteFor(levelById("7-05")).includes("heater"), "All Hands lost Heat");
+    assert.ok(paletteFor(levelById("7-05")).includes("overload"), "All Hands lost Over");
+
+    const css = readFileSync(new URL("../css/rhyme.css", import.meta.url), "utf8");
+    const tools = cssBlock(css, "#tools {", ".tool {");
+    assert.match(tools, /flex-wrap:\s*wrap|grid-template-columns/);
+    const tile = cssBlock(css, ".tool {", ".tool.on");
+    assert.match(tile, /min-height:\s*44px/);
+    assert.match(tile, /min-width:\s*44px/);
+  });
+});
+
+describe("station docks do not mute Spine or Last Geometry", () => {
   it("still lets the captain finish Spine and Last Geometry", () => {
     for (const id of ["1-01", "7-06"]) {
       const m = captainPlay(id, 220);
@@ -78,8 +78,8 @@ describe("thumb dock does not mute Spine or Last Geometry", () => {
   });
 });
 
-describe("look, audio, and assign language stay after the dock pass", () => {
-  it("keeps hulls, dashes, sparse beds, and walk-on-assign", () => {
+describe("look, audio, assign, and wrap stay after station docks", () => {
+  it("keeps hulls, dashes, sparse beds, walk-on-assign, and wrapping", () => {
     const title = bedFor("title");
     assert.ok(title.freqs.length <= 2);
     const render = readFileSync(new URL("../js/render.js", import.meta.url), "utf8");
@@ -90,11 +90,13 @@ describe("look, audio, and assign language stay after the dock pass", () => {
     assert.match(sim, /function sendKapsel/);
     const audio = readFileSync(new URL("../js/audio.js", import.meta.url), "utf8");
     assert.doesNotMatch(audio, /PENTATONIC/);
+    const css = readFileSync(new URL("../css/rhyme.css", import.meta.url), "utf8");
+    assert.match(cssBlock(css, "#tools {", ".tool {"), /flex-wrap:\s*wrap/);
   });
 });
 
-describe("dock cache is not stuck on v33", () => {
-  it("bumps the portrait cache after the thumb dock", () => {
+describe("station-dock cache is not stuck on v34", () => {
+  it("bumps the portrait cache after the station palettes", () => {
     const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
     const app = readFileSync(new URL("../js/app.js", import.meta.url), "utf8");
     const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");

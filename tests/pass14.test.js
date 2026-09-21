@@ -131,8 +131,8 @@ describe("assign cache is not stuck on v32", () => {
     const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
     const app = readFileSync(new URL("../js/app.js", import.meta.url), "utf8");
     const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
-    assert.match(html, /app\.js\?v=34/);
-    assert.match(app, /sw\.js\?v=24/);
-    assert.match(sw, /rhyme-v24/);
+    assert.match(html, /app\.js\?v=35/);
+    assert.match(app, /sw\.js\?v=25/);
+    assert.match(sw, /rhyme-v25/);
   });
 });

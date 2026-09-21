@@ -2421,7 +2421,9 @@ export function objectiveText(match) {
 export function paletteFor(level) {
   const allowed = level.allowed || ["corridor", "garden", "extractor", "weapons", "quarters"];
   const tools = ["assign", ...allowed];
-  if (level.mechanics && level.mechanics.overload) tools.push("overload");
+  const win = level.win || {};
+  const mech = level.mechanics || {};
+  if (mech.overload && ((win.overloads || 0) > 0 || allowed.includes("heater"))) tools.push("overload");
   tools.push("salvage");
   return tools;
 }
