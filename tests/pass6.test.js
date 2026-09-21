@@ -212,6 +212,8 @@ describe("look and juice for mid-campaign stations", () => {
     assert.equal(/relicHalo|kissRing/.test(render), true, "render missing relic halo");
     assert.equal(/gateFold|foldRing/.test(render), true, "render missing gate fold");
     assert.equal(app.includes("hunger"), true, "hud missing pantry hunger");
+    assert.equal(app.includes("thumbPlay"), true, "localhost thumb helper missing");
+    assert.equal(app.includes("startFinale"), true);
     assert.equal(css.includes("hunger"), true, "css missing pantry hunger");
     assert.equal(/relic:/.test(audio), true, "audio missing relic tone");
   });
