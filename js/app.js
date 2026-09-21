@@ -47,7 +47,17 @@ let ended = false;
 
 function show(name) {
   screen = name;
-  for (const id of screens) $(id).classList.toggle("on", id === name);
+  for (const id of screens) {
+    const el = $(id);
+    const on = id === name;
+    if (on) {
+      el.classList.remove("on");
+      void el.offsetWidth;
+      el.classList.add("on");
+    } else {
+      el.classList.remove("on");
+    }
+  }
   if (name === "play") resize();
   const bed = name === "play" ? "play" : name === "how" ? "how" : name === "worlds" || name === "levels" ? "worlds" : "title";
   audio.setBed(bed);
@@ -158,6 +168,9 @@ function startLevel(level) {
   $("endOv").classList.remove("on");
   $("endRetry").hidden = false;
   $("play").classList.remove("ended");
+  $("play").classList.remove("boot");
+  void $("play").offsetWidth;
+  $("play").classList.add("boot");
   match = createMatch(level, { seed: (Date.now() % 9999) + 1 });
   applyWorldChrome(level);
   show("play");
@@ -533,11 +546,13 @@ $("pauseBtn").onclick = () => {
   if (!match) return;
   pause(match);
   $("pauseOv").classList.add("on");
+  buzz(10);
 };
 $("resumeBtn").onclick = () => {
   if (match && match.status === "paused") pause(match);
   if (match) resumeThink(match);
   $("pauseOv").classList.remove("on");
+  buzz(8);
 };
 $("restartBtn").onclick = () => startLevel(chosen);
 $("pauseMap").onclick = $("endMap").onclick = () => {
@@ -634,7 +649,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=17").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=18").catch(() => {});
 }
 
 renderTitle();
@@ -661,6 +676,9 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
       $("endOv").classList.remove("on");
       $("endRetry").hidden = false;
       $("play").classList.remove("ended");
+      $("play").classList.remove("boot");
+      void $("play").offsetWidth;
+      $("play").classList.add("boot");
       match = createMatch(level, { seed: seed || 11 });
       applyWorldChrome(level);
       show("play");

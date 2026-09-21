@@ -119,6 +119,7 @@ export function drawWorld(ctx, match, view, now) {
   drawShieldAuras(ctx, match, now);
   drawScanCones(ctx, match, now);
   drawRooms(ctx, match, now);
+  drawStaffGlow(ctx, match, now);
   drawTrails(ctx, match);
   drawAssignBeams(ctx, match);
   drawKapsels(ctx, match);
@@ -582,6 +583,26 @@ function drawStock(ctx, room) {
   });
 }
 
+function drawStaffGlow(ctx, match, now) {
+  ctx.save();
+  for (const room of match.rooms) {
+    if (!room.built || room.dead || room.type === "core") continue;
+    const occupancy = match.kapsels.filter((k) => k.assignment === room.id).length;
+    if (occupancy < 1) continue;
+    const a = 0.06 + Math.sin((now || 0) * 0.004 + room.id) * 0.025;
+    ctx.fillStyle = `rgba(243,240,232,${a})`;
+    ctx.beginPath();
+    ctx.arc(room.cx, room.cy, match.layout.cell * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(243,240,232,${0.12 + occupancy * 0.04})`;
+    ctx.lineWidth = 1.15;
+    ctx.beginPath();
+    ctx.arc(room.cx, room.cy, match.layout.cell * 0.52, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawTrails(ctx, match) {
   for (const t of match.trails || []) {
     const a = Math.max(0, 1 - t.t / t.life);
@@ -638,6 +659,11 @@ function drawKapsels(ctx, match) {
     ctx.fillStyle = "#f3f0e8";
     round(ctx, x - 4.5, y - 8 + bob, 9, 15, 4);
     ctx.fill();
+    const glint = "rgba(255,255,255,0.62)";
+    ctx.fillStyle = glint;
+    ctx.fillRect(x - 2.8, y - 6.5 + bob, 2.4, 2.2);
+    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    ctx.fillRect(x - 1.6, y - 5.6 + bob, 1.1, 1);
     ctx.fillStyle = "rgba(20,22,28,0.55)";
     ctx.fillRect(x - 2.2, y - 4 + bob, 4.4, 2.2);
     const pip =

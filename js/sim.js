@@ -454,6 +454,23 @@ export function pathLength(match, sx, sy, tx, ty) {
   return p ? p.length : Infinity;
 }
 
+function reachableBuilt(match) {
+  const from = match.core.cells[0];
+  const seen = new Set();
+  if (!from || !walkable(match, from.x, from.y)) return seen;
+  const q = [{ x: from.x, y: from.y }];
+  seen.add(key(from.x, from.y));
+  for (let i = 0; i < q.length; i++) {
+    for (const n of neighborsOf(match, q[i].x, q[i].y)) {
+      const k = key(n.x, n.y);
+      if (seen.has(k) || !walkable(match, n.x, n.y)) continue;
+      seen.add(k);
+      q.push(n);
+    }
+  }
+  return seen;
+}
+
 function routeToRoom(match, sx, sy, room) {
   if (!room || room.dead) return null;
   let best = null;
@@ -2000,7 +2017,7 @@ function bestPlacement(match, type, scoreFn) {
 function placeBest(match, type, scoreFn) {
   setTool(match, type);
   const best = bestPlacement(match, type, scoreFn);
-  if (!best) return false;
+  if (!best || best.sc <= -9000) return false;
   match.rot = best.rot;
   return tapCell(match, best.x, best.y);
 }
@@ -2068,7 +2085,7 @@ function staffJobs(match, order) {
 function staffFinale(match) {
   setTool(match, "assign");
   keepHaulers(match);
-  const order = ["scanner", "weapons", "shield", "heater", "garden", "kitchen", "extractor", "gate"];
+  const order = ["scanner", "weapons", "shield", "heater", "garden", "kitchen", "extractor", "gate", "quarters"];
   staffJobs(match, order);
 }
 
@@ -2096,6 +2113,54 @@ export function thumbBeat(match) {
   return false;
 }
 
+function hullDist(match, spot) {
+  const live = reachableBuilt(match);
+  let min = Infinity;
+  for (const cell of match.grid.values()) {
+    if (!live.has(key(cell.x, cell.y))) continue;
+    const d = Math.abs(cell.x - spot.x) + Math.abs(cell.y - spot.y);
+    if (d < min) min = d;
+  }
+  if (min === Infinity) {
+    const home = match.core.cells[0];
+    return Math.abs(spot.x - home.x) + Math.abs(spot.y - home.y);
+  }
+  return min;
+}
+
+function nearestUnlinkedRelics(match) {
+  return match.relics
+    .filter((r) => !r.linked)
+    .slice()
+    .sort((a, b) => hullDist(match, a) - hullDist(match, b));
+}
+
+function kissNearestRelic(match) {
+  const spots = nearestUnlinkedRelics(match);
+  if (!spots.length) return false;
+  const live = reachableBuilt(match);
+  return placeBest(match, "corridor", (_, cells) => {
+    let touchLive = false;
+    for (const c of cells) {
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
+        if (live.has(key(c.x + dx, c.y + dy))) touchLive = true;
+      }
+    }
+    if (!touchLive) return -9999;
+    return scoreTowardSpots(cells, [spots[0]]);
+  });
+}
+
+function bagHold(match) {
+  if (match.mechanics && match.mechanics.pieceQueue) return holdPiece(match);
+  return false;
+}
+
 export function captainBeat(match) {
   if (!match || match.status !== "playing") return false;
   const allowed = new Set((match.level && match.level.allowed) || []);
@@ -2113,23 +2178,71 @@ export function captainBeat(match) {
     return resumeThink(match);
   }
   staffFinale(match);
-  if (unpaidCount(match) >= 2 || coreStock(match, "mineral") < 4) return false;
-  if (allowed.has("scanner") && !hasJob(match, "scanner")) return placeBest(match, "scanner", scoreNearCoreCells);
+  const unpaid = unpaidCount(match);
+  const mineral = coreStock(match, "mineral");
+  const waveSoon = match.enemies.length > 0 || (match.waves && match.waves.timer < 18);
+  const linked = match.relics.filter((r) => r.linked).length;
+  const needRelics = need.relics && linked < need.relics;
+  const wantGuns = !!(need.surviveWaves || need.kills || need.rooms?.weapons);
+  const wantGarden = need.food || need.crew || match.mechanics.kitchenChain || (need.rooms && need.rooms.garden);
   const guns = match.rooms.filter((r) => r.type === "weapons" && !r.dead).length;
-  if (allowed.has("weapons") && guns < (match.enemies.length >= 3 ? 2 : 1)) {
-    return placeBest(match, "weapons", scoreNearCoreCells);
+  const needGunNow = allowed.has("weapons") && guns < 1 && match.enemies.length > 0;
+  const mealsReady =
+    !(wantGarden && allowed.has("garden") && !hasJob(match, "garden")) &&
+    !(match.mechanics.kitchenChain && allowed.has("kitchen") && !hasJob(match, "kitchen"));
+  const wantExtract =
+    allowed.has("extractor") &&
+    !hasJob(match, "extractor") &&
+    mealsReady &&
+    ((need.overloads || 0) > (match.overloads || 0) ||
+      (needRelics && match.deposits.size > 0) ||
+      (!needRelics && mineral < 14) ||
+      (needRelics && mineral < 16));
+
+  if (unpaid >= 2) return false;
+  if (wantExtract && unpaid >= 1) return false;
+  if (match.rooms.some((r) => r.type === "extractor" && !r.built && !r.dead)) return false;
+  if (mineral < 4 && unpaid > 0) return false;
+
+  if (needGunNow && placeBest(match, "weapons", scoreNearCoreCells)) return true;
+  if (wantExtract) {
+    const deposits = [...match.deposits].map((k) => {
+      const [x, y] = k.split(",").map(Number);
+      return { x, y };
+    });
+    if (
+      placeBest(match, "extractor", (_, cells) =>
+        deposits.length ? scoreTowardSpots(cells, deposits) : scoreNearCoreCells(match, cells)
+      )
+    ) {
+      return true;
+    }
+  }
+
+  if (needRelics && !match.mechanics.kitchenChain && !(wantGuns && waveSoon) && kissNearestRelic(match)) return true;
+
+  if (allowed.has("scanner") && !hasJob(match, "scanner")) return placeBest(match, "scanner", scoreNearCoreCells);
+  let gunsWanted = need.rooms?.weapons || 0;
+  if (wantGuns && (waveSoon || match.enemies.length > 0)) gunsWanted = Math.max(gunsWanted, 1);
+  if (match.enemies.length >= 3 && (!needRelics || mineral >= 18)) gunsWanted = Math.max(gunsWanted, 2);
+  if (!wantGuns && match.enemies.length > 0) gunsWanted = Math.max(gunsWanted, 1);
+  if (allowed.has("weapons") && guns < gunsWanted) {
+    if (placeBest(match, "weapons", scoreNearCoreCells)) return true;
+    return bagHold(match);
   }
   if (allowed.has("shield") && !hasJob(match, "shield") && (need.rooms?.shield || match.mechanics.flares)) {
     return placeBest(match, "shield", scoreNearCoreCells);
   }
-  if (allowed.has("garden") && !hasJob(match, "garden")) return placeBest(match, "garden", scoreNearCoreCells);
+  if (allowed.has("garden") && !hasJob(match, "garden") && wantGarden) {
+    return placeBest(match, "garden", scoreNearCoreCells);
+  }
   if (match.mechanics.kitchenChain && allowed.has("kitchen") && !hasJob(match, "kitchen")) {
     return placeBest(match, "kitchen", scoreNearCoreCells);
   }
-  if (need.relics && match.relics.filter((r) => r.linked).length < need.relics) {
-    const spots = match.relics.filter((r) => !r.linked);
-    if (placeBest(match, "corridor", (_, cells) => scoreTowardSpots(cells, spots))) return true;
+  if (need.crew && match.kapsels.length < need.crew && allowed.has("quarters") && !hasJob(match, "quarters")) {
+    return placeBest(match, "quarters", scoreNearCoreCells);
   }
+  if (needRelics && kissNearestRelic(match)) return true;
   if (need.thaw && match.ice.size > 0) {
     const ice = [...match.ice].map((k) => {
       const [x, y] = k.split(",").map(Number);
@@ -2154,9 +2267,8 @@ export function captainBeat(match) {
         return tapCell(match, road.x, road.y);
       }
     }
-    if (allowed.has("heater")) {
-      return placeBest(match, "heater", (_, cells) => scoreTowardSpots(cells, ice));
-    }
+    if (allowed.has("heater") && placeBest(match, "heater", (_, cells) => scoreTowardSpots(cells, ice))) return true;
+    return bagHold(match);
   }
   const gateNeed = Math.max(need.rooms?.gate || 0, (need.folds || 0) > 0 ? 2 : 0);
   const gatesHave = match.rooms.filter((r) => r.type === "gate" && !r.dead).length;
@@ -2171,21 +2283,28 @@ export function captainBeat(match) {
   if (
     allowed.has("extractor") &&
     !hasJob(match, "extractor") &&
+    mealsReady &&
     (coreStock(match, "mineral") < 10 || (need.overloads || 0) > (match.overloads || 0) || need.mineral != null)
   ) {
     const deposits = [...match.deposits].map((k) => {
       const [x, y] = k.split(",").map(Number);
       return { x, y };
     });
-    return placeBest(match, "extractor", (_, cells) =>
-      deposits.length ? scoreTowardSpots(cells, deposits) : scoreNearCoreCells(match, cells)
-    );
+    if (
+      placeBest(match, "extractor", (_, cells) =>
+        deposits.length ? scoreTowardSpots(cells, deposits) : scoreNearCoreCells(match, cells)
+      )
+    ) {
+      return true;
+    }
+    return bagHold(match);
   }
   if ((need.overloads || 0) > (match.overloads || 0)) {
     const ex = match.rooms.find((r) => (r.type === "extractor" || r.type === "garden") && r.built && !r.dead);
     if (ex && staffed(match, ex) >= 1) return overloadRoom(match, ex);
   }
-  return false;
+  if (needRelics) return bagHold(match);
+  return bagHold(match);
 }
 
 export function gridAt(match, px, py) {
