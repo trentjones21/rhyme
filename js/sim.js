@@ -1824,6 +1824,10 @@ export function coachText(match) {
     return match.hint || (match.level && match.level.lesson) || "";
   }
   const jam = unpaidCount(match) >= 2;
+  const idleN = match.kapsels.filter((k) => !k.assignment || k.assignment === match.core.id).length;
+  if (jam && !match.thinkLocked && idleN < 1) {
+    return "Recall a gunner. Dashed rooms need haulers.";
+  }
   if (jam && !match.thinkLocked) {
     return "Two unpaid blueprints jam the hull. Let haulers finish one.";
   }
@@ -1909,28 +1913,66 @@ function placeBest(match, type, scoreFn) {
   return tapCell(match, best.x, best.y);
 }
 
-function staffFinale(match) {
-  setTool(match, "assign");
-  const keep = new Set(["scanner", "weapons", "shield"]);
-  if (match.ice && match.ice.size) keep.add("heater");
-  const unpaid = unpaidCount(match);
-  const haulersWanted = unpaid > 0 ? 2 : 1;
-  const idle = () => match.kapsels.filter((k) => !k.assignment || k.assignment === match.core.id);
-  const assignedTo = (room) => match.kapsels.filter((k) => k.assignment === room.id).length;
+function idleKapsels(match) {
+  return match.kapsels.filter((k) => !k.assignment || k.assignment === match.core.id);
+}
+
+function assignedCount(match, room) {
+  return match.kapsels.filter((k) => k.assignment === room.id).length;
+}
+
+function keepHaulers(match) {
+  const haulersWanted = unpaidCount(match) > 0 ? 2 : 1;
   let guard = 0;
-  while (idle().length < haulersWanted && guard++ < 8) {
-    const room = match.rooms.find((r) => r.type !== "core" && !keep.has(r.type) && assignedTo(r) > 0);
-    if (!room) break;
-    match.selected = room.id;
+  while (idleKapsels(match).length < haulersWanted && guard++ < 12) {
+    const over = match.rooms
+      .filter((r) => r.type !== "core" && assignedCount(match, r) > 1)
+      .sort((a, b) => assignedCount(match, b) - assignedCount(match, a))[0];
+    if (!over) break;
+    match.selected = over.id;
     if (!recall(match)) break;
   }
-  const order = ["scanner", "weapons", "shield", "heater", "garden", "kitchen", "extractor", "gate"];
+}
+
+function staffJobs(match, order) {
+  const haulersWanted = unpaidCount(match) > 0 ? 2 : 1;
   for (const type of order) {
-    if (idle().length <= haulersWanted) break;
+    if (idleKapsels(match).length <= haulersWanted) break;
     const room = match.rooms.find((r) => r.type === type && !r.dead);
     if (!room) continue;
-    if (assignedTo(room) < 1) assignTo(match, room);
+    if (assignedCount(match, room) < 1) assignTo(match, room);
   }
+}
+
+function staffFinale(match) {
+  setTool(match, "assign");
+  keepHaulers(match);
+  const order = ["scanner", "weapons", "shield", "heater", "garden", "kitchen", "extractor", "gate"];
+  staffJobs(match, order);
+}
+
+export function thumbBeat(match) {
+  if (!match || match.status !== "playing") return false;
+  if (match.thinkLocked) return false;
+  setTool(match, "assign");
+  keepHaulers(match);
+  staffJobs(match, ["scanner", "weapons", "shield", "heater", "garden", "kitchen"]);
+  if (unpaidCount(match) >= 2 || coreStock(match, "mineral") < 4) return false;
+  const allowed = new Set((match.level && match.level.allowed) || []);
+  const need = match.win || {};
+  if (allowed.has("garden") && !hasJob(match, "garden")) return placeBest(match, "garden", scoreNearCoreCells);
+  if (match.mechanics.kitchenChain && allowed.has("kitchen") && !hasJob(match, "kitchen")) {
+    return placeBest(match, "kitchen", scoreNearCoreCells);
+  }
+  if (need.relics && match.relics.filter((r) => r.linked).length < need.relics) {
+    const spots = match.relics.filter((r) => !r.linked);
+    if (placeBest(match, "corridor", (_, cells) => scoreTowardSpots(cells, spots))) return true;
+  }
+  const guns = match.rooms.filter((r) => r.type === "weapons" && !r.dead).length;
+  if (allowed.has("weapons") && match.enemies.length >= 3 && guns < 2) {
+    return placeBest(match, "weapons", scoreNearCoreCells);
+  }
+  return false;
 }
 
 export function captainBeat(match) {

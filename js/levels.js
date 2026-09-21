@@ -327,7 +327,7 @@ export const LEVELS = [
 
   L("5-01", 5, "Shortcut", {
     lesson: "Two gates are one step.",
-    briefing: "Place a pair of gates. The floor folds: a kapsel steps through violet and lands on the other pad. Staff nothing; geometry does the walking.",
+    briefing: "Two pads, one step. Place a pair of gates and watch the violet ribbon fold the floor. Staff nothing; geometry does the walking.",
     hint: "Gates pair automatically. Staff nothing; the floor itself folds.",
     start: { minerals: 12, food: 6, crew: 3 },
     mechanics: { wormholes: true },

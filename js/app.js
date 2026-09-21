@@ -22,6 +22,7 @@ import {
   resumeThink,
   coachText,
   captainBeat,
+  thumbBeat,
 } from "./sim.js";
 import { LEVELS, WORLDS, levelById, nextLevel, levelsInWorld } from "./levels.js";
 import { loadSave, writeSave, completeLevel, worldUnlocked, campaignStats } from "./save.js";
@@ -611,7 +612,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=14").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=15").catch(() => {});
 }
 
 renderTitle();
@@ -745,44 +746,11 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
       this.place("scanner");
       this.place("weapons");
       this.place("shield");
-      this.assignType("scanner");
-      this.assignType("weapons");
-      this.assignType("shield");
       this.resumeThink();
       this.setSpeed(mult || 2);
       while (match && match.status === "playing" && match.time < 240) {
-        this.assignType("scanner");
-        this.assignType("weapons");
-        this.assignType("shield");
-        const unpaid = match.rooms.filter((r) => !r.built && r.type !== "core").length;
-        if (unpaid >= 2 || coreStock(match, "mineral") < 4) {
-          await waitSim(2);
-          continue;
-        }
-        if (!match.rooms.some((r) => r.type === "garden" && !r.dead)) {
-          this.place("garden");
-          await waitSim(1);
-          continue;
-        }
-        this.assignType("garden");
-        if (!match.rooms.some((r) => r.type === "kitchen" && !r.dead)) {
-          this.place("kitchen");
-          await waitSim(1);
-          continue;
-        }
-        this.assignType("kitchen");
-        if (match.relics.filter((r) => r.linked).length < 4) {
-          this.kissRelic();
-          await waitSim(1);
-          continue;
-        }
-        const guns = match.rooms.filter((r) => r.type === "weapons" && !r.dead).length;
-        if (match.enemies.length >= 3 && guns < 2) {
-          this.place("weapons");
-          await waitSim(1);
-          continue;
-        }
-        await waitSim(2);
+        thumbBeat(match);
+        await waitSim(1);
       }
       return this.snap();
     },

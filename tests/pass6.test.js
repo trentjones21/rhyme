@@ -17,6 +17,7 @@ import {
   gunRange,
   remapLayout,
   computeLayout,
+  thumbBeat,
 } from "../js/sim.js";
 
 function tick(match, seconds) {
@@ -211,6 +212,7 @@ describe("look and juice for mid-campaign stations", () => {
     const audio = readFileSync(new URL("../js/audio.js", import.meta.url), "utf8");
     assert.equal(/relicHalo|kissRing/.test(render), true, "render missing relic halo");
     assert.equal(/gateFold|foldRing/.test(render), true, "render missing gate fold");
+    assert.equal(/foldRibbon/.test(render), true, "render missing gate fold ribbon");
     assert.equal(app.includes("hunger"), true, "hud missing pantry hunger");
     assert.equal(app.includes("thumbPlay"), true, "localhost thumb helper missing");
     assert.equal(app.includes("startFinale"), true);
@@ -330,5 +332,62 @@ describe("a garden-first thumb wins Last Geometry", () => {
     assert.equal(m.relics.filter((r) => r.linked).length, 4);
     assert.ok(m.wavesCleared >= 4, m.wavesCleared);
     assert.ok(m.stars >= 2, m.stars);
+  });
+});
+
+describe("a jammed hull still keeps haulers", () => {
+  function idleCount(match) {
+    return match.kapsels.filter((k) => !k.assignment || k.assignment === match.core.id).length;
+  }
+
+  function stuffHull(match) {
+    setTool(match, "assign");
+    for (let n = 0; n < 6; n++) {
+      for (const type of ["scanner", "weapons", "shield"]) {
+        const room = match.rooms.find((r) => r.type === type && !r.dead);
+        if (room) tapCell(match, room.cells[0].x, room.cells[0].y);
+      }
+    }
+  }
+
+  it("recalls extra gunners so dashed rooms can finish", () => {
+    const m = createMatch(levelById("7-06"), { seed: 11 });
+    hullKit(m);
+    resumeThink(m);
+    stuffHull(m);
+    assert.equal(idleCount(m), 0);
+    assert.match(coachText(m), /recall/i);
+    assert.equal(typeof thumbBeat, "function");
+    thumbBeat(m);
+    assert.ok(idleCount(m) >= 2, `idle ${idleCount(m)}`);
+    tick(m, 40);
+    const built = m.rooms.filter((r) => r.built && r.type !== "core").length;
+    assert.ok(built >= 1, m.rooms.map((r) => r.type + (r.built ? "" : "*")).join(","));
+  });
+
+  it("wins Last Geometry at 430×932 after a greedy hull assign", () => {
+    const m = createMatch(levelById("7-06"), { seed: 11 });
+    remapLayout(m, computeLayout(430, 932, m.cols, m.rows, { top: 8, bottom: 8, left: 8, right: 8 }));
+    hullKit(m);
+    resumeThink(m);
+    stuffHull(m);
+    while (m.time < 240 && m.status === "playing") {
+      thumbBeat(m);
+      tick(m, 1);
+    }
+    assert.equal(
+      m.status,
+      "won",
+      `${m.status} ${m.loseReason || m.winReason} t=${m.time.toFixed(1)} relics=${m.relics.filter((r) => r.linked).length} waves=${m.wavesCleared} food=${coreStock(m, "food")} deaths=${m.deaths} hp=${m.core.hp}`
+    );
+    assert.equal(m.deaths, 0);
+    assert.ok(m.core.hp / m.core.maxhp >= 0.8, m.core.hp);
+    assert.ok(m.stars >= 3, m.stars);
+  });
+
+  it("drives the localhost thumb helper with thumbBeat, not assign spam", () => {
+    const app = readFileSync(new URL("../js/app.js", import.meta.url), "utf8");
+    assert.match(app, /thumbBeat\(match\)/);
+    assert.doesNotMatch(app, /while[\s\S]*assignType\("scanner"\)/);
   });
 });

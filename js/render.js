@@ -111,6 +111,7 @@ export function drawWorld(ctx, match, view, now) {
   ctx.stroke();
 
   drawTerrain(ctx, match, now);
+  drawFoldRibbon(ctx, match, now);
   drawRoomGlow(ctx, match, now);
   drawValidCells(ctx, match);
   drawShieldAuras(ctx, match, now);
@@ -255,7 +256,36 @@ function relicHalo(ctx, match, relic, now) {
     }
 }
 
-function gateFold(ctx, now, room) {
+function foldRibbon(ctx, match, now) {
+  const gates = match.rooms.filter((r) => r.type === "gate" && r.built && !r.dead);
+  if (gates.length < 2) return;
+  ctx.save();
+  ctx.lineWidth = 2.2;
+  for (let i = 0; i < gates.length; i++) {
+    for (let j = i + 1; j < gates.length; j++) {
+      const a = gates[i];
+      const b = gates[j];
+      const t = (now * 0.0018 + a.id + b.id) % 1;
+      ctx.strokeStyle = `rgba(196,170,240,${0.22 + Math.sin(now * 0.005) * 0.1})`;
+      ctx.setLineDash([7, 9]);
+      ctx.lineDashOffset = -now * 0.04;
+      ctx.beginPath();
+      ctx.moveTo(a.cx, a.cy);
+      const mx = (a.cx + b.cx) / 2;
+      const my = (a.cy + b.cy) / 2 - 28;
+      ctx.quadraticCurveTo(mx, my, b.cx, b.cy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const px = (1 - t) * (1 - t) * a.cx + 2 * (1 - t) * t * mx + t * t * b.cx;
+      const py = (1 - t) * (1 - t) * a.cy + 2 * (1 - t) * t * my + t * t * b.cy;
+      ctx.fillStyle = `rgba(232,217,255,${0.45 + Math.sin(now * 0.01) * 0.2})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
   const spin = now * 0.003 + room.id;
   ctx.strokeStyle = `rgba(196,170,240,${0.55 + Math.sin(now * 0.006) * 0.2})`;
   ctx.strokeRect(-6, -6, 12, 12);
@@ -342,8 +372,8 @@ function drawRooms(ctx, match, now) {
       if (!room.built) {
         ctx.strokeStyle = teach
           ? `rgba(232,217,160,${0.55 + Math.sin(now * 0.01) * 0.35})`
-          : "rgba(255,255,255,0.35)";
-        ctx.lineWidth = teach ? 2 : 1;
+          : `rgba(255,220,170,${0.28 + Math.sin(now * 0.008 + room.id) * 0.2})`;
+        ctx.lineWidth = teach ? 2 : 1.4;
         ctx.setLineDash([4, 4]);
         round(ctx, r.x, r.y, r.w, r.h, 5);
         ctx.stroke();
@@ -431,6 +461,9 @@ function drawRooms(ctx, match, now) {
       } else if (room.type === "quarters") {
         ctx.strokeRect(-11, -7, 9, 13);
         ctx.strokeRect(2, -7, 9, 13);
+        ctx.fillStyle = `rgba(110,195,201,${0.18 + Math.sin(now * 0.005 + room.id) * 0.08})`;
+        ctx.fillRect(-9, -5, 5, 4);
+        ctx.fillRect(4, -5, 5, 4);
       } else if (room.type === "shield") {
         ctx.beginPath();
         ctx.arc(0, 0, 8, 0, Math.PI * 2);
