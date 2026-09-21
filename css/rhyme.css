@@ -159,15 +159,16 @@ h1 { font-size: 42px; letter-spacing: 0.28em; font-weight: 560; margin: 18px 0 8
 .logo {
   margin: 28px 0 10px;
   display: grid;
-  grid-template-columns: repeat(5, 22px);
-  grid-template-rows: repeat(4, 22px);
-  gap: 4px;
-  width: 126px;
+  grid-template-columns: repeat(5, 20px);
+  grid-template-rows: repeat(5, 20px);
+  gap: 3px;
+  width: 112px;
 }
-.logo i { display: block; border-radius: 5px; background: #2e3548; box-shadow: inset 0 1px 0 rgba(255,255,255,0.12); }
-.logo i.g { background: #5ea86a; box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 0 12px rgba(94,168,106,0.35); }
-.logo i.m { background: #d56b8c; box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 0 12px rgba(213,107,140,0.32); }
-.logo i.c { background: #8d6b4a; box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 0 10px rgba(141,107,74,0.28); }
+.logo i { display: block; border-radius: 5px; background: #2e3548; box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -2px 0 rgba(0,0,0,0.22); }
+.logo.plus i.z { background: transparent; box-shadow: none; }
+.logo i.g { background: #5ea86a; box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -2px 0 rgba(0,0,0,0.18), 0 0 10px rgba(94,168,106,0.28); }
+.logo i.m { background: #d56b8c; box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -2px 0 rgba(0,0,0,0.18), 0 0 10px rgba(213,107,140,0.26); }
+.logo i.c { background: #8d6b4a; box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -2px 0 rgba(0,0,0,0.2), 0 0 8px rgba(141,107,74,0.22); }
 .logo i.c, .logo i.g, .logo i.m { animation: tilepulse 3.6s ease-in-out infinite; }
 .logo i.g { animation-delay: 0.4s; }
 .logo i.m { animation-delay: 0.9s; }

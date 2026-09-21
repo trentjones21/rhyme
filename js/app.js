@@ -669,7 +669,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=20").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=21").catch(() => {});
 }
 
 renderTitle();

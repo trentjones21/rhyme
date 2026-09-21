@@ -17,19 +17,19 @@ function seedStars(n) {
     stars.push({
       x: rnd(),
       y: rnd(),
-      r: rnd() * 1.35 + 0.25,
-      a: rnd() * 0.55 + 0.12,
+      r: rnd() * 1.05 + 0.2,
+      a: rnd() * 0.42 + 0.1,
       p: rnd() * Math.PI * 2,
     });
   }
-  for (let i = 0; i < 36; i++) {
+  for (let i = 0; i < 8; i++) {
     motes.push({
       x: rnd(),
       y: rnd(),
-      r: rnd() * 1.4 + 0.6,
-      a: rnd() * 0.12 + 0.04,
+      r: rnd() * 1.1 + 0.5,
+      a: rnd() * 0.08 + 0.03,
       p: rnd() * Math.PI * 2,
-      s: 0.012 + rnd() * 0.02,
+      s: 0.008 + rnd() * 0.012,
     });
   }
 }
@@ -42,7 +42,7 @@ function round(ctx, x, y, w, h, r) {
 export function drawWorld(ctx, match, view, now) {
   const w = view.w;
   const h = view.h;
-  if (!stars) seedStars(220);
+  if (!stars) seedStars(88);
   ctx.clearRect(0, 0, w, h);
   ctx.save();
   if (match.shake > 0) {
@@ -60,25 +60,13 @@ export function drawWorld(ctx, match, view, now) {
 
   ctx.fillStyle = look.haze;
   ctx.beginPath();
-  ctx.ellipse(w * 0.22, h * 0.06, w * 0.52, 82, -0.18, 0, Math.PI * 2);
+  ctx.ellipse(w * 0.28, h * 0.08, w * 0.46, 64, -0.16, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = look.haze2 || "rgba(110, 55, 80, 0.12)";
-  ctx.beginPath();
-  ctx.ellipse(w * 0.86, h * 0.7, 140, 200, 0.42, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = look.mote || "rgba(110, 195, 201, 0.05)";
-  ctx.beginPath();
-  ctx.ellipse(w * 0.55, h * 0.22, w * 0.4, 40, 0.1, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = "#1a2030";
-  ctx.beginPath();
-  ctx.arc(-20, h + 40, 160, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#161822";
-  ctx.beginPath();
-  ctx.arc(w + 30, 90, 110, 0, Math.PI * 2);
-  ctx.fill();
+  const keyLight = ctx.createLinearGradient(0, 0, w * 0.65, h * 0.8);
+  keyLight.addColorStop(0, "rgba(243,240,232,0.05)");
+  keyLight.addColorStop(0.55, "rgba(243,240,232,0)");
+  ctx.fillStyle = keyLight;
+  ctx.fillRect(0, 0, w, h);
 
   for (const st of stars) {
     const tw = 0.55 + Math.sin(now * 0.0018 + st.p) * 0.45;
@@ -358,62 +346,86 @@ function drawShieldAuras(ctx, match, now) {
   }
 }
 
+function hullRadii(set, x, y, rad) {
+  const n = set.has(x + "," + (y - 1));
+  const e = set.has(x + 1 + "," + y);
+  const s = set.has(x + "," + (y + 1));
+  const w = set.has(x - 1 + "," + y);
+  return [!n && !w ? rad : 0, !n && !e ? rad : 0, !s && !e ? rad : 0, !s && !w ? rad : 0];
+}
+
+function drawRoomHull(ctx, match, room, now) {
+  const live = new Set(room.cells.map((c) => c.x + "," + c.y));
+  const color = room.def.hue || "#888";
+  const teach = match.tutorial && match.tutorial.needAssign && match.tutorial.roomId === room.id;
+  for (const c of room.cells) {
+    const r = cellRect(match, c.x, c.y, 1.5);
+    const rad = hullRadii(live, c.x, c.y, 6.5);
+    ctx.globalAlpha = room.built ? 1 : 0.3;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(r.x, r.y, r.w, r.h, [rad[0], rad[1], rad[2], rad[3]]);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    const bevel = ctx.createLinearGradient(r.x, r.y, r.x + r.w, r.y + r.h);
+    bevel.addColorStop(0, "rgba(255,255,255,0.2)");
+    bevel.addColorStop(0.48, "rgba(255,255,255,0.02)");
+    bevel.addColorStop(1, "rgba(8,10,16,0.32)");
+    ctx.fillStyle = bevel;
+    const ir = rad.map((v) => Math.max(0, v - 1.1));
+    ctx.beginPath();
+    ctx.roundRect(r.x + 1.5, r.y + 1.5, r.w - 3, r.h - 3, ir);
+    ctx.fill();
+    if (!live.has(c.x + "," + (c.y - 1))) {
+      ctx.fillStyle = "rgba(255,255,255,0.16)";
+      ctx.fillRect(r.x + rad[0] + 2, r.y + 1.4, Math.max(2, r.w - rad[0] - rad[1] - 4), 1.3);
+    }
+    if (!room.built) {
+      ctx.strokeStyle = teach
+        ? `rgba(232,217,160,${0.55 + Math.sin(now * 0.01) * 0.35})`
+        : `rgba(255,220,170,${0.28 + Math.sin(now * 0.008 + room.id) * 0.2})`;
+      ctx.lineWidth = teach ? 2 : 1.4;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.roundRect(r.x, r.y, r.w, r.h, [rad[0], rad[1], rad[2], rad[3]]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineWidth = 1;
+    } else if (room.production > 0 && (room.type === "garden" || room.type === "extractor")) {
+      const glow = 0.07 + Math.min(0.18, room.production * 0.05);
+      ctx.fillStyle = room.type === "extractor" ? `rgba(213,107,140,${glow})` : `rgba(94,168,106,${glow})`;
+      ctx.beginPath();
+      ctx.roundRect(r.x - 0.6, r.y - 0.6, r.w + 1.2, r.h + 1.2, rad.map((v) => v + 0.6));
+      ctx.fill();
+    }
+    if (room.built && match.kapsels.some((k) => k.assignment === room.id)) {
+      ctx.fillStyle = "rgba(243,240,232,0.06)";
+      ctx.beginPath();
+      ctx.roundRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6, ir);
+      ctx.fill();
+    }
+    if (teach && room.built) {
+      ctx.strokeStyle = `rgba(232,217,160,${0.55 + Math.sin(now * 0.01) * 0.35})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(r.x, r.y, r.w, r.h, [rad[0], rad[1], rad[2], rad[3]]);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+    }
+  }
+}
+
 function drawRooms(ctx, match, now) {
   for (const room of match.rooms) {
-    const color = room.def.hue || "#888";
-    const teach = match.tutorial && match.tutorial.needAssign && match.tutorial.roomId === room.id;
-    for (const c of room.cells) {
-      const r = cellRect(match, c.x, c.y, 2.4);
-      ctx.globalAlpha = room.built ? 1 : 0.28;
-      ctx.fillStyle = color;
-      round(ctx, r.x, r.y, r.w, r.h, 5);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      const inner = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
-      inner.addColorStop(0, "rgba(255,255,255,0.16)");
-      inner.addColorStop(0.45, "rgba(12,14,20,0.08)");
-      inner.addColorStop(1, "rgba(12,14,20,0.28)");
-      ctx.fillStyle = inner;
-      round(ctx, r.x + 2.2, r.y + 2.2, r.w - 4.4, r.h - 4.4, 3.5);
-      ctx.fill();
-      if (!room.built) {
-        ctx.strokeStyle = teach
-          ? `rgba(232,217,160,${0.55 + Math.sin(now * 0.01) * 0.35})`
-          : `rgba(255,220,170,${0.28 + Math.sin(now * 0.008 + room.id) * 0.2})`;
-        ctx.lineWidth = teach ? 2 : 1.4;
-        ctx.setLineDash([4, 4]);
-        round(ctx, r.x, r.y, r.w, r.h, 5);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.lineWidth = 1;
-      } else if (room.production > 0 && (room.type === "garden" || room.type === "extractor")) {
-        const glow = 0.08 + Math.min(0.22, room.production * 0.06);
-        ctx.fillStyle = room.type === "extractor" ? `rgba(213,107,140,${glow})` : `rgba(94,168,106,${glow})`;
-        round(ctx, r.x - 1, r.y - 1, r.w + 2, r.h + 2, 6);
-        ctx.fill();
-      }
-      if (room.built) {
-        const staff = match.kapsels.some((k) => k.assignment === room.id);
-        if (staff) {
-          ctx.fillStyle = "rgba(243,240,232,0.08)";
-          round(ctx, r.x + 3, r.y + 3, r.w - 6, r.h - 6, 3);
-          ctx.fill();
-        }
-      }
-      if (teach && room.built) {
-        ctx.strokeStyle = `rgba(232,217,160,${0.55 + Math.sin(now * 0.01) * 0.35})`;
-        ctx.lineWidth = 2;
-        round(ctx, r.x, r.y, r.w, r.h, 5);
-        ctx.stroke();
-        ctx.lineWidth = 1;
-      }
-    }
+    drawRoomHull(ctx, match, room, now);
     if (match.selected === room.id) {
+      const live = new Set(room.cells.map((c) => c.x + "," + c.y));
       ctx.strokeStyle = "rgba(243,240,232,0.85)";
       ctx.lineWidth = 2;
       for (const c of room.cells) {
         const r = cellRect(match, c.x, c.y, 1.2);
-        round(ctx, r.x, r.y, r.w, r.h, 6);
+        ctx.beginPath();
+        ctx.roundRect(r.x, r.y, r.w, r.h, hullRadii(live, c.x, c.y, 6));
         ctx.stroke();
       }
     }
@@ -633,62 +645,64 @@ function drawAssignBeams(ctx, match) {
   ctx.restore();
 }
 
+function drawKapselDash(ctx, k, x, y, facing) {
+  const bob = k.state === "idle" ? 0 : Math.sin(k.bob) * 0.7;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  ctx.rotate(facing);
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath();
+  ctx.ellipse(0.4, 4.6, 6, 1.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const stadiumW = 13.6;
+  const stadiumH = 6.5;
+  ctx.fillStyle = "#f3f0e8";
+  round(ctx, -stadiumW / 2, -stadiumH / 2, stadiumW, stadiumH, stadiumH / 2);
+  ctx.fill();
+  const specular = "rgba(255,255,255,0.55)";
+  ctx.fillStyle = specular;
+  round(ctx, -5.4, -2.4, 6.4, 2.1, 1);
+  ctx.fill();
+  const pip =
+    k.job && k.job.kind === "build"
+      ? "#8d6b4a"
+      : k.job && k.job.kind === "produce" && k.job.target && k.job.target.type === "extractor"
+        ? "#d56b8c"
+        : k.job && k.job.kind === "produce"
+          ? "#5ea86a"
+          : k.job && k.job.kind === "staff"
+            ? "#7b88a3"
+            : k.job && k.job.kind === "cook"
+              ? "#f0c24a"
+              : k.job && k.job.kind === "haul"
+                ? "#e07898"
+                : null;
+  if (pip) {
+    ctx.fillStyle = pip;
+    ctx.beginPath();
+    ctx.arc(-stadiumW / 2 + 2.4, 0, 1.35, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+  if (k.carry) {
+    const col = k.carry === "mineral" ? "#e07898" : k.carry === "food" ? "#f0c24a" : "#6fbf6a";
+    ctx.fillStyle = col;
+    ctx.fillRect(x - 3.2, y - 11 + bob, 6.4, 4.4);
+  }
+}
+
 function drawKapsels(ctx, match) {
   for (const k of match.kapsels) {
-    const bob = k.state === "idle" ? 0 : Math.sin(k.bob) * 1.1;
     const x = k.x + (k.ox || 0);
     const y = k.y + (k.oy || 0);
-    if (k.state === "walking" && k.path && k.path[0]) {
+    let facing = k.facing || 0;
+    if (k.path && k.path[0]) {
       const L = match.layout;
       const tx = L.ox + (k.path[0].x + 0.5) * L.cell;
       const ty = L.oy + (k.path[0].y + 0.5) * L.cell;
-      const dx = tx - x;
-      const dy = ty - y;
-      const d = Math.hypot(dx, dy) || 1;
-      ctx.strokeStyle = k.carry ? "rgba(240,194,74,0.35)" : "rgba(243,240,232,0.22)";
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.moveTo(x, y + 2);
-      ctx.lineTo(x - (dx / d) * 10, y - (dy / d) * 10 + 2);
-      ctx.stroke();
+      facing = Math.atan2(ty - y, tx - x);
     }
-    ctx.fillStyle = "rgba(0,0,0,0.28)";
-    ctx.beginPath();
-    ctx.ellipse(x, y + 7, 5.5, 2.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#f3f0e8";
-    round(ctx, x - 4.5, y - 8 + bob, 9, 15, 4);
-    ctx.fill();
-    const glint = "rgba(255,255,255,0.62)";
-    ctx.fillStyle = glint;
-    ctx.fillRect(x - 2.8, y - 6.5 + bob, 2.4, 2.2);
-    ctx.fillStyle = "rgba(255,255,255,0.28)";
-    ctx.fillRect(x - 1.6, y - 5.6 + bob, 1.1, 1);
-    ctx.fillStyle = "rgba(20,22,28,0.55)";
-    ctx.fillRect(x - 2.2, y - 4 + bob, 4.4, 2.2);
-    const pip =
-      k.job && k.job.kind === "build"
-        ? "#8d6b4a"
-        : k.job && k.job.kind === "produce" && k.job.target && k.job.target.type === "extractor"
-          ? "#d56b8c"
-          : k.job && k.job.kind === "produce"
-            ? "#5ea86a"
-            : k.job && k.job.kind === "staff"
-              ? "#7b88a3"
-              : k.job && k.job.kind === "cook"
-                ? "#f0c24a"
-                : k.job && k.job.kind === "haul"
-                  ? "#e07898"
-                  : null;
-    if (pip) {
-      ctx.fillStyle = pip;
-      ctx.fillRect(x + 3.2, y - 9 + bob, 3.2, 3.2);
-    }
-    if (k.carry) {
-      const col = k.carry === "mineral" ? "#e07898" : k.carry === "food" ? "#f0c24a" : "#6fbf6a";
-      ctx.fillStyle = col;
-      ctx.fillRect(x - 3.5, y - 16 + bob, 7, 6);
-    }
+    drawKapselDash(ctx, k, x, y, facing);
   }
 }
 
