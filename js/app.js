@@ -49,6 +49,8 @@ function show(name) {
   screen = name;
   for (const id of screens) $(id).classList.toggle("on", id === name);
   if (name === "play") resize();
+  const bed = name === "play" ? "play" : name === "how" ? "how" : name === "worlds" || name === "levels" ? "worlds" : "title";
+  audio.setBed(bed);
 }
 
 function buzz(ms) {
@@ -94,9 +96,11 @@ function renderWorlds() {
     const open = worldUnlocked(save, world.id, LEVELS);
     const levels = levelsInWorld(world.id);
     const done = levels.filter((l) => save.stars[l.id]).length;
+    const look = worldLook(world.id);
     const b = document.createElement("button");
     b.className = "card";
     b.disabled = !open;
+    b.style.boxShadow = `inset 3px 0 0 ${look.accent}, inset 0 1px 0 rgba(255,255,255,0.06)`;
     b.innerHTML = `<b>${world.id}  ·  ${world.name}</b><span>${open ? world.blurb : "Clear the previous shore first."}  ${done}/6</span>`;
     b.onclick = () => {
       worldId = world.id;
@@ -252,7 +256,9 @@ function hud() {
     match.tutorial.lockedUi = true;
     $("hint").textContent = match.mechanics.teachStaff
       ? "The garden is built. Tap it — not the kapsel."
-      : "Tap the blueprint to send a kapsel. That is the whole game.";
+      : match.mechanics.teachScan
+        ? "The scanner is built. Tap Scan so it can see cloaked scouts."
+        : "Tap the blueprint to send a kapsel. That is the whole game.";
     $("hint").classList.add("on", "lesson");
     if (match.tool !== "assign") setTool(match, "assign");
     const on = document.querySelector("#tools .tool.on");
@@ -490,6 +496,7 @@ function onCanvasMove(ev) {
 
 $("playCampaign").onclick = async () => {
   await audio.unlock();
+  audio.setBed("title");
   const level = levelById(save.last) || LEVELS[0];
   openBrief(level);
 };
@@ -498,7 +505,10 @@ $("openWorlds").onclick = async () => {
   renderWorlds();
   show("worlds");
 };
-$("openHow").onclick = () => show("how");
+$("openHow").onclick = async () => {
+  await audio.unlock();
+  show("how");
+};
 $("worldsBack").onclick = () => {
   renderTitle();
   show("title");
@@ -624,7 +634,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=16").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=17").catch(() => {});
 }
 
 renderTitle();

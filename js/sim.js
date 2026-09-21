@@ -757,6 +757,9 @@ export function createMatch(level, opts = {}) {
       warned: false,
     },
     wavesCleared: 0,
+    flaresCleared: 0,
+    folds: 0,
+    overloads: 0,
     hadEnemies: false,
     kills: 0,
     shotsFired: 0,
@@ -834,7 +837,7 @@ export function createMatch(level, opts = {}) {
   if (match.mechanics.pieceQueue) dealPiece(match);
   if (match.mechanics.teachAssign) {
     match.tutorial = { needAssign: false, assigned: false, staffed: false, roomId: null };
-  } else if (match.mechanics.teachStaff) {
+  } else if (match.mechanics.teachStaff || match.mechanics.teachScan) {
     match.tutorial = { needAssign: false, assigned: true, staffed: false, roomId: null };
   } else {
     match.tutorial.assigned = true;
@@ -972,6 +975,7 @@ export function overloadRoom(match, room) {
   if (staffed(match, room) < 1) return false;
   if (room.overclock > 0 || room.stunned > 0) return false;
   room.overclock = OVERCLOCK_SEC;
+  match.overloads = (match.overloads || 0) + 1;
   match.events.push({ type: "overload", room: room.id });
   return true;
 }
@@ -1179,6 +1183,18 @@ function chooseJob(match, k) {
 function stepAlong(match, k, dt) {
   const node = k.path && k.path[0];
   if (!node) return true;
+  const here = atPixel(match, k.x, k.y);
+  const man = Math.abs(here.x - node.x) + Math.abs(here.y - node.y);
+  if (man > 1) {
+    const p = pixelCenter(match, node.x, node.y);
+    k.x = p.x;
+    k.y = p.y;
+    k.path.shift();
+    match.folds = (match.folds || 0) + 1;
+    match.events.push({ type: "fold" });
+    emitFx(match, "pulse", p.x, p.y, "#9b7ad4");
+    return k.path.length === 0;
+  }
   const p = pixelCenter(match, node.x, node.y);
   const dx = p.x - k.x;
   const dy = p.y - k.y;
@@ -1242,7 +1258,9 @@ function work(match, k, dt) {
           match.events.push({ type: "built", room: room.id });
           emitFx(match, "dust", room.cx, room.cy, room.def.hue);
           if (room.type === "corridor" || room.type === "gate") k.assignment = null;
-          if (match.mechanics.teachStaff && match.tutorial && !match.tutorial.staffed && room.type === "garden") {
+          const teachGarden = match.mechanics.teachStaff && room.type === "garden";
+          const teachScan = match.mechanics.teachScan && room.type === "scanner";
+          if ((teachGarden || teachScan) && match.tutorial && !match.tutorial.staffed) {
             for (const w of match.kapsels) {
               if (w.assignment === room.id) {
                 release(w);
@@ -1672,6 +1690,7 @@ function updateFlares(match, dt) {
       }
     }
     match.events.push({ type: "flare" });
+    match.flaresCleared = (match.flaresCleared || 0) + 1;
     match.shake = 0.35;
     f.timer = f.interval;
     f.warning = 0;
@@ -1748,6 +1767,9 @@ function checkWin(match) {
   if (w.relics != null && match.relics.filter((r) => r.linked).length < w.relics) return false;
   if (w.beacon && !beaconActive(match)) return false;
   if (w.thaw && match.ice.size > 0) return false;
+  if (w.flares != null && (match.flaresCleared || 0) < w.flares) return false;
+  if (w.folds != null && (match.folds || 0) < w.folds) return false;
+  if (w.overloads != null && (match.overloads || 0) < w.overloads) return false;
   return true;
 }
 
@@ -1946,8 +1968,19 @@ function cellsFor(match, type, x, y, rot) {
   return rotateShape(playerShape(match, type), rot).map(([dx, dy]) => ({ x: x + dx, y: y + dy }));
 }
 
-function placeBest(match, type, scoreFn) {
-  setTool(match, type);
+function scoreIceCover(cells, ice, radius) {
+  let cover = 0;
+  let min = Infinity;
+  for (const s of ice) {
+    let d = Infinity;
+    for (const c of cells) d = Math.min(d, Math.hypot(s.x - c.x, s.y - c.y));
+    if (d <= radius) cover += 1;
+    min = Math.min(min, d);
+  }
+  return cover * 100 - min;
+}
+
+function bestPlacement(match, type, scoreFn) {
   let best = null;
   const saved = match.rot;
   for (let rot = 0; rot < 4; rot++) {
@@ -1961,6 +1994,12 @@ function placeBest(match, type, scoreFn) {
     }
   }
   match.rot = saved;
+  return best;
+}
+
+function placeBest(match, type, scoreFn) {
+  setTool(match, type);
+  const best = bestPlacement(match, type, scoreFn);
   if (!best) return false;
   match.rot = best.rot;
   return tapCell(match, best.x, best.y);
@@ -2061,6 +2100,10 @@ export function captainBeat(match) {
   if (!match || match.status !== "playing") return false;
   const allowed = new Set((match.level && match.level.allowed) || []);
   const need = match.win || {};
+  if (match.tutorial && match.tutorial.needAssign && match.tutorial.roomId != null) {
+    const room = match.rooms.find((r) => r.id === match.tutorial.roomId);
+    if (room) return assignTo(match, room);
+  }
   if (match.thinkLocked) {
     if (allowed.has("scanner") && !hasJob(match, "scanner")) return placeBest(match, "scanner", scoreNearCoreCells);
     if (allowed.has("weapons") && !hasJob(match, "weapons")) return placeBest(match, "weapons", scoreNearCoreCells);
@@ -2087,20 +2130,49 @@ export function captainBeat(match) {
     const spots = match.relics.filter((r) => !r.linked);
     if (placeBest(match, "corridor", (_, cells) => scoreTowardSpots(cells, spots))) return true;
   }
-  if (need.thaw && allowed.has("heater") && match.ice.size > 0) {
-    const heaters = match.rooms.filter((r) => r.type === "heater" && !r.dead).length;
-    if (heaters < 2) {
-      const ice = [...match.ice].map((k) => {
-        const [x, y] = k.split(",").map(Number);
-        return { x, y };
+  if (need.thaw && match.ice.size > 0) {
+    const ice = [...match.ice].map((k) => {
+      const [x, y] = k.split(",").map(Number);
+      return { x, y };
+    });
+    if (allowed.has("heater")) {
+      const cover = bestPlacement(match, "heater", (_, cells) => scoreIceCover(cells, ice, HEATER_R));
+      if (cover && cover.sc >= 100) {
+        setTool(match, "heater");
+        match.rot = cover.rot;
+        return tapCell(match, cover.x, cover.y);
+      }
+    }
+    if (allowed.has("corridor")) {
+      const road = bestPlacement(match, "corridor", (_, cells) => {
+        if (cells.some((c) => match.ice.has(key(c.x, c.y)))) return -999;
+        return scoreTowardSpots(cells, ice);
       });
+      if (road && road.sc > -900) {
+        setTool(match, "corridor");
+        match.rot = road.rot;
+        return tapCell(match, road.x, road.y);
+      }
+    }
+    if (allowed.has("heater")) {
       return placeBest(match, "heater", (_, cells) => scoreTowardSpots(cells, ice));
     }
   }
-  if (need.rooms?.gate && match.rooms.filter((r) => r.type === "gate" && !r.dead).length < need.rooms.gate) {
+  const gateNeed = Math.max(need.rooms?.gate || 0, (need.folds || 0) > 0 ? 2 : 0);
+  const gatesHave = match.rooms.filter((r) => r.type === "gate" && !r.dead).length;
+  if (allowed.has("gate") && gatesHave < gateNeed) {
+    const builtGate = match.rooms.find((r) => r.type === "gate" && r.built && !r.dead);
+    const spots = (match.level.prebuilt || []).map((p) => ({ x: p.x, y: p.y }));
+    if (gatesHave === 0) return placeBest(match, "gate", scoreNearCoreCells);
+    if (builtGate && spots.length) return placeBest(match, "gate", scoreNearCoreCells);
+    if (spots.length) return placeBest(match, "gate", (_, cells) => scoreTowardSpots(cells, spots));
     return placeBest(match, "gate", scoreNearCoreCells);
   }
-  if (coreStock(match, "mineral") < 10 && allowed.has("extractor") && !hasJob(match, "extractor")) {
+  if (
+    allowed.has("extractor") &&
+    !hasJob(match, "extractor") &&
+    (coreStock(match, "mineral") < 10 || (need.overloads || 0) > (match.overloads || 0) || need.mineral != null)
+  ) {
     const deposits = [...match.deposits].map((k) => {
       const [x, y] = k.split(",").map(Number);
       return { x, y };
@@ -2108,6 +2180,10 @@ export function captainBeat(match) {
     return placeBest(match, "extractor", (_, cells) =>
       deposits.length ? scoreTowardSpots(cells, deposits) : scoreNearCoreCells(match, cells)
     );
+  }
+  if ((need.overloads || 0) > (match.overloads || 0)) {
+    const ex = match.rooms.find((r) => (r.type === "extractor" || r.type === "garden") && r.built && !r.dead);
+    if (ex && staffed(match, ex) >= 1) return overloadRoom(match, ex);
   }
   return false;
 }
@@ -2137,6 +2213,9 @@ export function objectiveText(match) {
   if (w.beacon) parts.push(beaconActive(match) ? "Beacon live" : "Staff the beacon");
   if (w.thaw) parts.push(match.ice.size ? `Thaw ${match.ice.size}` : "Ice clear");
   if (w.kills != null) parts.push(`Kills ${match.kills}/${w.kills}`);
+  if (w.flares != null) parts.push(`Flares ${match.flaresCleared || 0}/${w.flares}`);
+  if (w.folds != null) parts.push(`Folds ${match.folds || 0}/${w.folds}`);
+  if (w.overloads != null) parts.push(`Over ${match.overloads || 0}/${w.overloads}`);
   return parts.join("  ·  ") || "Hold the station";
 }
 

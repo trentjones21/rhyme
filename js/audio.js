@@ -4,6 +4,47 @@ let ctx = null;
 let drone = null;
 let muted = false;
 let started = false;
+let bedScene = "title";
+let dripId = 0;
+let voices = [];
+
+const PENTATONIC = [392, 440, 494, 523, 587, 659];
+
+export function bedFor(scene) {
+  if (scene === "title") return { a: 0.016, freqs: [49, 73.4] };
+  if (scene === "worlds") return { a: 0.018, freqs: [55, 82.4] };
+  if (scene === "how") return { a: 0.012, freqs: [43.65, 65.4] };
+  return { a: 0.024, freqs: [55, 82.4, 164.8] };
+}
+
+export function dripGap() {
+  return 3800;
+}
+
+export function setBed(scene) {
+  bedScene = scene || "title";
+  const spec = bedFor(bedScene);
+  if (drone && drone.gain) {
+    drone.gain.gain.value = muted ? 0 : spec.a;
+    const c = ctx;
+    if (c && voices.length) {
+      voices.forEach((o, i) => {
+        const f = spec.freqs[i] || spec.freqs[spec.freqs.length - 1];
+        try {
+          o.frequency.setTargetAtTime(f, c.currentTime, 0.08);
+        } catch (_) {
+          o.frequency.value = f;
+        }
+      });
+    }
+  }
+  ensureDrips();
+  return spec;
+}
+
+export function musicBed(scene) {
+  return setBed(scene);
+}
 
 function ac() {
   if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -16,7 +57,7 @@ export function isMuted() {
 
 export function setMuted(v) {
   muted = v;
-  if (drone && drone.gain) drone.gain.gain.value = muted ? 0 : 0.024;
+  if (drone && drone.gain) drone.gain.gain.value = muted ? 0 : bedFor(bedScene).a;
 }
 
 export async function unlock() {
@@ -24,12 +65,14 @@ export async function unlock() {
   if (c.state === "suspended") await c.resume();
   started = true;
   if (!drone) startDrone();
+  ensureDrips();
 }
 
 function startDrone() {
   const c = ac();
+  const spec = bedFor(bedScene);
   const g = c.createGain();
-  g.gain.value = muted ? 0 : 0.024;
+  g.gain.value = muted ? 0 : spec.a;
   g.connect(c.destination);
   const make = (freq, type, detune, mix) => {
     const o = c.createOscillator();
@@ -43,10 +86,24 @@ function startDrone() {
     o.start();
     return o;
   };
-  make(55, "sine", 0, 0.55);
-  make(82.4, "sine", 7, 0.28);
-  make(164.8, "triangle", -10, 0.12);
+  voices = [];
+  spec.freqs.forEach((f, i) => {
+    const type = i === 2 ? "triangle" : "sine";
+    const mix = i === 0 ? 0.55 : i === 1 ? 0.28 : 0.12;
+    voices.push(make(f, type, i * 6 - 4, mix));
+  });
   drone = { gain: g };
+}
+
+function ensureDrips() {
+  if (dripId) return;
+  const tick = () => {
+    dripId = setTimeout(tick, dripGap() + Math.floor(Math.random() * 900));
+    if (!started || muted) return;
+    const f = PENTATONIC[Math.floor(Math.random() * PENTATONIC.length)];
+    beep(f, 0.09, "sine", 0.016, f * 0.82);
+  };
+  dripId = setTimeout(tick, dripGap());
 }
 
 function beep(freq, dur, type, vol, slide) {
@@ -92,6 +149,7 @@ export const TONES = {
   fold: { freq: 415, dur: 0.2, type: "sine", vol: 0.045, slide: 622 },
   frost: { freq: 784, dur: 0.16, type: "sine", vol: 0.04, slide: 988 },
   ghost: { freq: 196, dur: 0.24, type: "triangle", vol: 0.04, slide: 147 },
+  drip: { freq: 523, dur: 0.09, type: "sine", vol: 0.018, slide: 392 },
   cleared: { freq: 620, dur: 0.16, type: "sine", vol: 0.045, slide: 880 },
 };
 
