@@ -148,6 +148,28 @@ function love.load()
     end
   end
 
+  print("pass 18 tempo")
+  do
+    ok(sim.KAPSEL_SPEED_BASE <= 36, "walk slow enough")
+    ok(sim.KAPSEL_SPEED_BASE >= 24, "walk not stalled")
+    ok((sim.KAPSEL_SPEED_BASE + sim.KAPSEL_SPEED_SPREAD) <= 42, "walk cap")
+    local m = mini({ start = { minerals = 8, food = 0, crew = 1 } })
+    local k = m.kapsels[1]
+    ok(k.speed <= 42, "spawn walk <= 42 got " .. tostring(k.speed))
+    ok(k.speed >= 24, "spawn walk >= 24 got " .. tostring(k.speed))
+    sim.setTool(m, "corridor")
+    sim.tapCell(m, 4, 4)
+    local hall = sim.roomAt(m, 4, 4)
+    sim.assignTo(m, hall)
+    tick(m, 0.45)
+    local walking = false
+    for _, w in ipairs(m.kapsels) do
+      if w.state == "walking" or (w.job and w.job.kind == "build") then walking = true end
+    end
+    ok(walking or not hall.built, "assign still in flight at 0.45s")
+    eq(hall.built, false, "not built in a blink")
+  end
+
   print("portrait layout")
   do
     local L = sim.computeLayout(430, 932, 9, 13, { top = 110, bottom = 210, left = 8, right = 8 })

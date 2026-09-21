@@ -31,6 +31,8 @@ local clock = 0
 local shotPending = false
 local shotFrames = 0
 local shotName = nil
+local shotDemo = nil
+local shotReady = false
 
 local function setScreen(name)
   G.screen = name
@@ -58,8 +60,7 @@ end
 local function remapPlay()
   local match = G.match
   if not match then return end
-  local bag = (match.mechanics.pieceQueue and match.piece) and 36 or 0
-  local top = (G.safeTop or 18) + 56 + bag + 8
+  local top = ui.playChrome(match, G.safeTop or 18)
   local bottom = (G.safeBottom or 18) + dockHeight(match) + 28
   local layout = sim.computeLayout(G.w, G.h, match.cols, match.rows, {
     top = top, bottom = bottom, left = 8, right = 8,
@@ -281,24 +282,25 @@ function love.load()
   local v1, v2, v3 = love.getVersion()
   print(string.format("Rhyme LÖVE %s.%s.%s boot  love .", tostring(v1), tostring(v2), tostring(v3)))
   local shot = os.getenv("RHYME_SHOT")
-  if shot == "play" or shot == "1" then
+  if shot == "play" or shot == "spine" or shot == "1" then
     openBrief(levels.LEVELS[1])
     startLevel(levels.LEVELS[1])
     shotPending = true
-    shotName = "pass17_play.png"
+    shotName = "pass18_spine.png"
+    shotDemo = "spine"
   elseif shot == "title" then
     shotPending = true
-    shotName = "pass17_title.png"
+    shotName = "pass18_title.png"
   elseif shot == "worlds" then
     setScreen("worlds")
     shotPending = true
-    shotName = "pass17_worlds.png"
+    shotName = "pass18_worlds.png"
   elseif shot == "finale" then
     local lg = levels.levelById("7-06")
     openBrief(lg)
     startLevel(lg)
     shotPending = true
-    shotName = "pass17_finale.png"
+    shotName = "pass18_finale.png"
   end
 end
 
@@ -316,6 +318,19 @@ function love.update(dt)
     return
   end
   remapPlay()
+  if shotDemo == "spine" and not shotReady then
+    sim.setTool(G.match, "corridor")
+    sim.tapCell(G.match, 4, 4)
+    local hall = sim.roomAt(G.match, 4, 4)
+    if hall then
+      sim.setTool(G.match, "assign")
+      sim.assignTo(G.match, hall)
+    end
+    for _ = 1, 96 do sim.step(G.match, 1 / 60) end
+    consumeEvents()
+    shotReady = true
+    shotDemo = nil
+  end
   if G.match.status == "playing" then
     simAcc = simAcc + dt
     while simAcc >= SIM_DT do
@@ -370,10 +385,11 @@ function love.draw()
   love.graphics.pop()
   if shotName and love.graphics.captureScreenshot then
     shotFrames = shotFrames + 1
-    if shotPending and shotFrames >= 3 then
+    local ready = shotReady or shotDemo == nil
+    if shotPending and ready and shotFrames >= 3 then
       love.graphics.captureScreenshot(shotName)
       shotPending = false
-    elseif shotFrames >= 5 then
+    elseif ready and shotFrames >= 6 then
       love.event.quit(0)
     end
   end

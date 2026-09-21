@@ -308,9 +308,14 @@ M.SHAPES = { corridor = { { 0, 0 } }, weapons = { { 0, 0 } }, gate = { { 0, 0 } 
 
 M.ROOMS = { corridor = { name = "Corridor", cost = 1, hp = 22, hue = "#8d6b4a" }, garden = { name = "Garden", cost = 4, hp = 44, hue = "#5ea86a" }, extractor = { name = "Extractor", cost = 4, hp = 44, hue = "#d56b8c" }, weapons = { name = "Weapons", cost = 6, hp = 70, hue = "#7b88a3" }, kitchen = { name = "Kitchen", cost = 4, hp = 44, hue = "#d4b14a" }, quarters = { name = "Quarters", cost = 5, hp = 52, hue = "#d4844a" }, shield = { name = "Shield", cost = 6, hp = 60, hue = "#6ec3c9" }, gate = { name = "Gate", cost = 3, hp = 36, hue = "#9b7ad4" }, heater = { name = "Heater", cost = 3, hp = 36, hue = "#e07a4a" }, scanner = { name = "Scanner", cost = 4, hp = 40, hue = "#70b4e0" }, beacon = { name = "Beacon", cost = 5, hp = 48, hue = "#e8d9a0" }, core = { name = "Core", cost = 0, hp = 300, hue = "#3c445c" } }
 
-local BUILD_SEC = 0.55
+-- Pass 18: slow enough that a tap-assign walk is readable by eye.
+local BUILD_SEC = 0.9
 
-local PICK_SEC = 0.18
+local PICK_SEC = 0.4
+
+M.KAPSEL_SPEED_BASE = 30
+
+M.KAPSEL_SPEED_SPREAD = 6
 
 local FOOD_SEC = 2.6
 
@@ -825,7 +830,7 @@ F.spawnKapsel = function(match, room)
 local cells = ((function() local __a = room; if truthy(__a) then return __a end; return match.core end)()).cells
 local c = idx(cells, math.floor((match.rng() * #cells)))
 local p = F.pixelCenter(match, c.x, c.y)
-local k = { id = (function() local __v = match.nextId match.nextId = match.nextId + 1 return __v end)(), x = p.x, y = p.y, speed = (62 + (match.rng() * 14)), bob = ((match.rng() * math.pi) * 2), state = "idle", label = "Waiting", assignment = nil, job = nil, path = nil, carry = nil, workTimer = 0, retry = 0, ox = 0, oy = 0, trailT = 0, facing = 0, docked = 0 }
+local k = { id = (function() local __v = match.nextId match.nextId = match.nextId + 1 return __v end)(), x = p.x, y = p.y, speed = (M.KAPSEL_SPEED_BASE + (match.rng() * M.KAPSEL_SPEED_SPREAD)), bob = ((match.rng() * math.pi) * 2), state = "idle", label = "Waiting", assignment = nil, job = nil, path = nil, carry = nil, workTimer = 0, retry = 0, ox = 0, oy = 0, trailT = 0, facing = 0, docked = 0 }
 table.insert(match.kapsels, k)
 do return k end
 end
@@ -1743,7 +1748,7 @@ F.updateKapsels = function(match, dt)
 F.reconcileClaims(match)
 for i = (#match.kapsels - 1), 0, -1 do
 local k = idx(match.kapsels, i)
-k.bob = (k.bob + (dt * 8))
+k.bob = (k.bob + (dt * 3.2))
 local g = F.atPixel(match, k.x, k.y)
 if not truthy(F.walkable(match, g.x, g.y)) then
 local best = nil
@@ -1791,10 +1796,10 @@ end
 elseif (k.state == "walking") then
 if truthy(k.carry) then
 k.trailT = ((function() local __a = k.trailT; if truthy(__a) then return __a end; return 0 end)() + dt)
-if ((tonumber(k.trailT) or 0) >= (tonumber(0.1) or 0)) then
+if ((tonumber(k.trailT) or 0) >= (tonumber(0.18) or 0)) then
 k.trailT = 0
-table.insert(match.trails, { x = k.x, y = k.y, resource = k.carry, t = 0, life = 0.55 })
-if ((tonumber(#match.trails) or 0) > (tonumber(96) or 0)) then
+table.insert(match.trails, { x = k.x, y = k.y, resource = k.carry, t = 0, life = 0.9 })
+if ((tonumber(#match.trails) or 0) > (tonumber(48) or 0)) then
 table.remove(match.trails, 1)
 end
 end
