@@ -389,6 +389,24 @@ describe("a jammed hull still keeps haulers", () => {
     );
   });
 
+  it("does not delete a kapsel when the tile under them vanishes", () => {
+    const m = createMatch(levelById("7-06"), { seed: 11 });
+    hullKit(m);
+    resumeThink(m);
+    waitUntil(m, (x) => x.rooms.some((r) => r.type === "weapons" && r.built), 40);
+    const hall = m.rooms.find((r) => r.type === "weapons" && r.built);
+    assert.ok(hall);
+    const k = m.kapsels[0];
+    k.x = hall.cx;
+    k.y = hall.cy;
+    const crew0 = m.kapsels.length;
+    setTool(m, "salvage");
+    tapCell(m, hall.cells[0].x, hall.cells[0].y);
+    tick(m, 0.25);
+    assert.equal(m.kapsels.length, crew0, `deaths ${m.deaths} reason ${m.loseReason}`);
+    assert.equal(m.deaths, 0);
+  });
+
   it("recalls extra gunners so dashed rooms can finish", () => {
     const m = createMatch(levelById("7-06"), { seed: 11 });
     hullKit(m);

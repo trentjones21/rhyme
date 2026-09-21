@@ -1336,8 +1336,13 @@ function updateKapsels(match, dt) {
         k.x = p.x;
         k.y = p.y;
       } else {
-        loseKapsel(match, i, "Your crew was lost with the station");
-        continue;
+        const home = match.core.cells[0];
+        const p = pixelCenter(match, home.x, home.y);
+        k.x = p.x;
+        k.y = p.y;
+        k.assignment = null;
+        k.path = [];
+        k.job = null;
       }
     }
     if (k.job && !validJob(match, k)) release(k);
