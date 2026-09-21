@@ -308,15 +308,15 @@ M.SHAPES = { corridor = { { 0, 0 } }, weapons = { { 0, 0 } }, gate = { { 0, 0 } 
 
 M.ROOMS = { corridor = { name = "Corridor", cost = 1, hp = 22, hue = "#8d6b4a" }, garden = { name = "Garden", cost = 4, hp = 44, hue = "#5ea86a" }, extractor = { name = "Extractor", cost = 4, hp = 44, hue = "#d56b8c" }, weapons = { name = "Weapons", cost = 6, hp = 70, hue = "#7b88a3" }, kitchen = { name = "Kitchen", cost = 4, hp = 44, hue = "#d4b14a" }, quarters = { name = "Quarters", cost = 5, hp = 52, hue = "#d4844a" }, shield = { name = "Shield", cost = 6, hp = 60, hue = "#6ec3c9" }, gate = { name = "Gate", cost = 3, hp = 36, hue = "#9b7ad4" }, heater = { name = "Heater", cost = 3, hp = 36, hue = "#e07a4a" }, scanner = { name = "Scanner", cost = 4, hp = 40, hue = "#70b4e0" }, beacon = { name = "Beacon", cost = 5, hp = 48, hue = "#e8d9a0" }, core = { name = "Core", cost = 0, hp = 300, hue = "#3c445c" } }
 
-local BUILD_SEC = 0.55
+local BUILD_SEC = 0.72
 
-local PICK_SEC = 0.18
+local PICK_SEC = 0.32
 
-local FOOD_SEC = 2.6
+local FOOD_SEC = 3.4
 
-local MINERAL_SEC = 3.2
+local MINERAL_SEC = 4.0
 
-local COOK_SEC = 1.6
+local COOK_SEC = 2.0
 
 local RECRUIT_SEC = 3.4
 
@@ -825,7 +825,7 @@ F.spawnKapsel = function(match, room)
 local cells = ((function() local __a = room; if truthy(__a) then return __a end; return match.core end)()).cells
 local c = idx(cells, math.floor((match.rng() * #cells)))
 local p = F.pixelCenter(match, c.x, c.y)
-local k = { id = (function() local __v = match.nextId match.nextId = match.nextId + 1 return __v end)(), x = p.x, y = p.y, speed = (62 + (match.rng() * 14)), bob = ((match.rng() * math.pi) * 2), state = "idle", label = "Waiting", assignment = nil, job = nil, path = nil, carry = nil, workTimer = 0, retry = 0, ox = 0, oy = 0, trailT = 0, facing = 0, docked = 0 }
+local k = { id = (function() local __v = match.nextId match.nextId = match.nextId + 1 return __v end)(), x = p.x, y = p.y, speed = (26 + (match.rng() * 6)), bob = ((match.rng() * math.pi) * 2), state = "idle", label = "Waiting", assignment = nil, job = nil, path = nil, carry = nil, workTimer = 0, retry = 0, ox = 0, oy = 0, trailT = 0, facing = 0, docked = 0 }
 table.insert(match.kapsels, k)
 do return k end
 end
@@ -1791,10 +1791,10 @@ end
 elseif (k.state == "walking") then
 if truthy(k.carry) then
 k.trailT = ((function() local __a = k.trailT; if truthy(__a) then return __a end; return 0 end)() + dt)
-if ((tonumber(k.trailT) or 0) >= (tonumber(0.1) or 0)) then
+if ((tonumber(k.trailT) or 0) >= (tonumber(0.16) or 0)) then
 k.trailT = 0
-table.insert(match.trails, { x = k.x, y = k.y, resource = k.carry, t = 0, life = 0.55 })
-if ((tonumber(#match.trails) or 0) > (tonumber(96) or 0)) then
+table.insert(match.trails, { x = k.x, y = k.y, resource = k.carry, t = 0, life = 0.85 })
+if ((tonumber(#match.trails) or 0) > (tonumber(40) or 0)) then
 table.remove(match.trails, 1)
 end
 end
@@ -1829,7 +1829,7 @@ end
 table.insert(idx(groups, id), k)
 ::c47::
 end
-for _, pack in ipairs(groups) do
+for _, pack in pairs(groups) do
 listSort(pack, function(a, b)
 return (a.id - b.id)
 end)
@@ -3113,6 +3113,7 @@ table.insert(tools, "salvage")
 do return tools end
 end
 
+M.chipId = F.chipId
 M.jobChips = F.jobChips
 M.playerShape = F.playerShape
 M.fitPiece = F.fitPiece

@@ -120,6 +120,26 @@ function love.load()
     eq(n, 1, "one assigned")
   end
 
+  print("kapsel pace")
+  do
+    local m = mini()
+    for _, k in ipairs(m.kapsels) do
+      ok(k.speed <= 36, "walk slow " .. tostring(k.speed))
+      ok(k.speed >= 24, "walk moving " .. tostring(k.speed))
+    end
+    sim.setTool(m, "corridor")
+    ok(sim.tapCell(m, 4, 4), "pace hall")
+    ok(sim.assignTo(m, sim.roomAt(m, 4, 4)), "pace assign")
+    local walked = false
+    for _ = 1, 90 do
+      sim.step(m, 0.05)
+      for _, k in ipairs(m.kapsels) do
+        if k.state == "walking" then walked = true end
+      end
+    end
+    ok(walked, "assignment is visible as a walk")
+  end
+
   print("economy")
   do
     local m = mini({ start = { minerals = 8, food = 0, crew = 2 } })
@@ -201,7 +221,7 @@ function love.load()
     sim.setTool(m, "corridor")
     ok(sim.tapCell(m, 4, 8), "hall 2")
     ok(sim.tapCell(m, 2, 6), "hall 3")
-    for _ = 1, 500 do sim.step(m, 0.05) end
+    for _ = 1, 700 do sim.step(m, 0.05) end
     eq(m.status, "won", "spine won " .. tostring(m.status) .. " " .. tostring(m.loseReason))
     ok(m.stars >= 1, "stars")
   end

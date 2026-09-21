@@ -58,8 +58,8 @@ end
 local function remapPlay()
   local match = G.match
   if not match then return end
-  local bag = (match.mechanics.pieceQueue and match.piece) and 36 or 0
-  local top = (G.safeTop or 18) + 56 + bag + 8
+  local bag = (match.mechanics.pieceQueue and match.piece) and 44 or 0
+  local top = (G.safeTop or 18) + 64 + bag + 8
   local bottom = (G.safeBottom or 18) + dockHeight(match) + 28
   local layout = sim.computeLayout(G.w, G.h, match.cols, match.rows, {
     top = top, bottom = bottom, left = 8, right = 8,
@@ -281,24 +281,43 @@ function love.load()
   local v1, v2, v3 = love.getVersion()
   print(string.format("Rhyme LÖVE %s.%s.%s boot  love .", tostring(v1), tostring(v2), tostring(v3)))
   local shot = os.getenv("RHYME_SHOT")
-  if shot == "play" or shot == "1" then
-    openBrief(levels.LEVELS[1])
+  local demo = os.getenv("RHYME_DEMO")
+  if shot == "play" or shot == "spine" then
     startLevel(levels.LEVELS[1])
+    local m = G.match
+    sim.setTool(m, "corridor")
+    sim.tapCell(m, 4, 4)
+    sim.assignTo(m, sim.roomAt(m, 4, 4))
+    sim.setTool(m, "corridor")
+    sim.tapCell(m, 4, 8)
+    sim.tapCell(m, 2, 6)
+    for _ = 1, 100 do sim.step(m, 1 / 60) end
+    consumeEvents()
     shotPending = true
-    shotName = "pass17_play.png"
+    shotName = "pass18_spine.png"
   elseif shot == "title" then
     shotPending = true
-    shotName = "pass17_title.png"
+    shotName = "pass18_title.png"
   elseif shot == "worlds" then
     setScreen("worlds")
     shotPending = true
-    shotName = "pass17_worlds.png"
+    shotName = "pass18_worlds.png"
   elseif shot == "finale" then
     local lg = levels.levelById("7-06")
-    openBrief(lg)
     startLevel(lg)
     shotPending = true
-    shotName = "pass17_finale.png"
+    shotName = "pass18_finale.png"
+  elseif demo == "spine" or demo == "1" then
+    startLevel(levels.LEVELS[1])
+    local m = G.match
+    sim.setTool(m, "corridor")
+    sim.tapCell(m, 4, 4)
+    sim.assignTo(m, sim.roomAt(m, 4, 4))
+    sim.setTool(m, "corridor")
+    sim.tapCell(m, 4, 8)
+    sim.tapCell(m, 2, 6)
+    sim.setTool(m, "assign")
+    consumeEvents()
   end
 end
 

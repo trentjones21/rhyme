@@ -285,55 +285,68 @@ function M.play(g)
   local padL, padR = g.safeLeft, g.safeRight
   local top = g.safeTop
   local hy = top + 4
-  love.graphics.setColor(7 / 255, 8 / 255, 13 / 255, 0.72)
-  love.graphics.rectangle("fill", 0, 0, g.w, hy + 70)
+  love.graphics.setColor(7 / 255, 8 / 255, 13 / 255, 0.82)
+  love.graphics.rectangle("fill", 0, 0, g.w, hy + 78)
   btn(g.fonts, padL, hy, 44, 44, "II", false, true)
   hit("pause", padL, hy, 44, 44)
   local speedLabel = match.thinkLocked and "GO" or (tostring(g.speed) .. "x")
   btn(g.fonts, g.w - padR - 56, hy, 56, 44, speedLabel, match.thinkLocked)
   hit("speed", g.w - padR - 56, hy, 56, 44)
-  love.graphics.setFont(g.fonts.small)
-  love.graphics.setColor(PAPER)
+
   local mineral = math.floor(sim.coreStock(match, "mineral"))
   local food = math.floor(sim.coreStock(match, "food"))
-  love.graphics.setColor(MINERAL)
-  love.graphics.circle("fill", padL + 62, hy + 22, 4)
-  love.graphics.setColor(PAPER)
-  love.graphics.print(tostring(mineral), padL + 70, hy + 14)
-  love.graphics.setColor(FOOD)
-  love.graphics.circle("fill", padL + 118, hy + 22, 4)
-  love.graphics.setColor(PAPER)
-  love.graphics.print(tostring(food), padL + 126, hy + 14)
-  love.graphics.print(tostring(#match.kapsels), padL + 170, hy + 14)
-  local wave = "Quiet"
-  love.graphics.setColor(MUTED)
-  if match.thinkLocked then
-    wave = "Think"
-  elseif #match.enemies > 0 then
-    wave = "Defend"
-    love.graphics.setColor(DANGER)
-  elseif match.waves.timer < 900 then
-    local s = math.max(0, math.ceil(match.waves.timer))
-    wave = (match.waves.index == 0 and ("First " .. s .. "s") or ("Wave " .. (match.waves.index + 1) .. "  " .. s .. "s"))
-    if s <= 8 then love.graphics.setColor(DANGER) end
+  local function stat(x, color, n, label)
+    love.graphics.setColor(color)
+    love.graphics.circle("fill", x, hy + 12, 4)
+    love.graphics.setFont(g.fonts.ui)
+    love.graphics.setColor(PAPER)
+    love.graphics.print(tostring(n), x + 8, hy + 2)
+    love.graphics.setFont(g.fonts.tiny)
+    love.graphics.setColor(MUTED)
+    love.graphics.print(label, x + 8, hy + 22)
   end
+  stat(padL + 54, MINERAL, mineral, "ORE")
+  stat(padL + 122, FOOD, food, "MEALS")
+  stat(padL + 196, PAPER, #match.kapsels, "CREW")
+
+  local goX = g.w - padR - 56
   love.graphics.setFont(g.fonts.tiny)
-  love.graphics.printf(wave, g.w - padR - 160, hy + 16, 96, "right")
+  if match.thinkLocked then
+    love.graphics.setColor(PAPER)
+    love.graphics.rectangle("fill", goX - 78, hy + 6, 70, 32, 10, 10)
+    love.graphics.setColor(22 / 255, 24 / 255, 34 / 255, 1)
+    love.graphics.setFont(g.fonts.small)
+    love.graphics.printf("THINK", goX - 78, hy + 14, 70, "center")
+  else
+    local wave = "QUIET"
+    love.graphics.setColor(MUTED)
+    if #match.enemies > 0 then
+      wave = "THREAT " .. tostring(#match.enemies)
+      love.graphics.setColor(DANGER)
+    elseif match.waves.timer < 900 then
+      local s = math.max(0, math.ceil(match.waves.timer))
+      wave = (match.waves.index == 0 and ("IN " .. s .. "s") or ("W" .. (match.waves.index + 1) .. " " .. s .. "s"))
+      if s <= 8 then love.graphics.setColor(DANGER) end
+    end
+    love.graphics.setFont(g.fonts.small)
+    love.graphics.printf(wave, goX - 108, hy + 14, 100, "right")
+  end
 
   -- job chips
   local chips = sim.jobChips(match)
   local cx = padL
-  local cy = hy + 48
+  local cy = hy + 50
   love.graphics.setFont(g.fonts.tiny)
   for _, c in ipairs(chips) do
-    local tw = 54
-    love.graphics.setColor(243 / 255, 240 / 255, 232 / 255, 0.08)
+    local label = (c.n or 1) .. " " .. string.upper(c.label or "")
+    local tw = math.max(52, 14 + #label * 6)
+    love.graphics.setColor(243 / 255, 240 / 255, 232 / 255, 0.07)
     love.graphics.rectangle("fill", cx, cy, tw, 18, 8, 8)
-    local r, gb, b = render.hex(CHIP_HUE[c.id] or "#f3f0e8")
+    local r, gb, b = render.hex(render.JOB_HUE[c.id] or CHIP_HUE[c.id] or "#f3f0e8")
     love.graphics.setColor(r, gb, b, 1)
     love.graphics.circle("fill", cx + 8, cy + 9, 3)
     love.graphics.setColor(PAPER)
-    love.graphics.print((c.n or 1) .. " " .. (c.label or ""), cx + 14, cy + 4)
+    love.graphics.print(label, cx + 14, cy + 4)
     cx = cx + tw + 4
   end
 
@@ -341,19 +354,26 @@ function M.play(g)
   local bagY = cy + 22
   local bagH = 0
   if match.mechanics.pieceQueue and match.piece then
-    bagH = 36
+    bagH = 42
     local bx = padL
+    love.graphics.setFont(g.fonts.tiny)
+    love.graphics.setColor(MUTED)
+    love.graphics.print("HOLD", bx, bagY)
     if match.held then
-      drawMini(g.fonts, match.held, bx, bagY, true)
+      drawMini(g.fonts, match.held, bx, bagY + 12, true)
     else
       love.graphics.setColor(243 / 255, 240 / 255, 232 / 255, 0.06)
-      love.graphics.rectangle("fill", bx, bagY, 28, 28, 4, 4)
+      love.graphics.rectangle("fill", bx, bagY + 12, 28, 28, 4, 4)
     end
-    bx = bx + 34
-    drawMini(g.fonts, match.piece, bx, bagY, false)
-    bx = bx + 34
+    bx = bx + 40
+    love.graphics.setColor(PAPER)
+    love.graphics.print("NOW", bx, bagY)
+    drawMini(g.fonts, match.piece, bx, bagY + 12, false)
+    bx = bx + 40
+    love.graphics.setColor(MUTED)
+    love.graphics.print("NEXT", bx, bagY)
     for i = 1, math.min(2, #(match.queue or {})) do
-      drawMini(g.fonts, match.queue[i], bx, bagY, true)
+      drawMini(g.fonts, match.queue[i], bx, bagY + 12, true)
       bx = bx + 34
     end
   end
@@ -380,19 +400,23 @@ function M.play(g)
     local y = dockY + row * (toolH + gap)
     local on = match.tool == tool
     local disabled = locked and tool ~= "assign"
-    love.graphics.setColor(243 / 255, 240 / 255, 232 / 255, disabled and 0.04 or (on and 0.18 or 0.08))
-    love.graphics.rectangle("fill", x, y, btnW, toolH, 14, 14)
-    if on then
+    if on and not disabled then
       love.graphics.setColor(PAPER)
-      love.graphics.setLineWidth(1)
-      love.graphics.rectangle("line", x, y, btnW, toolH, 14, 14)
+      love.graphics.rectangle("fill", x, y, btnW, toolH, 14, 14)
+    else
+      love.graphics.setColor(243 / 255, 240 / 255, 232 / 255, disabled and 0.04 or 0.08)
+      love.graphics.rectangle("fill", x, y, btnW, toolH, 14, 14)
     end
     local hue = (sim.ROOMS[tool] and sim.ROOMS[tool].hue) or (tool == "assign" and "#f3f0e8" or "#e24b52")
     local r, gb, b = render.hex(hue)
     love.graphics.setColor(r, gb, b, disabled and 0.3 or 1)
     love.graphics.rectangle("fill", x + btnW / 2 - 9, y + 8, 18, 10, 3, 3)
     love.graphics.setFont(g.fonts.tiny)
-    love.graphics.setColor(PAPER[1], PAPER[2], PAPER[3], disabled and 0.32 or 0.85)
+    if on and not disabled then
+      love.graphics.setColor(22 / 255, 24 / 255, 34 / 255, 1)
+    else
+      love.graphics.setColor(PAPER[1], PAPER[2], PAPER[3], disabled and 0.32 or 0.85)
+    end
     love.graphics.printf(TOOL_LABELS[tool] or tool, x, y + 24, btnW, "center")
     if not disabled then hit("tool", x, y, btnW, toolH, tool) end
   end
@@ -415,14 +439,12 @@ function M.play(g)
   -- hint
   local hint = g.hint
   if hint and hint ~= "" then
-    local hx, hy, hw, hh = padL, dockY - 86, g.w - padL - padR, 58
-    love.graphics.setColor(12 / 255, 14 / 255, 20 / 255, 0.88)
-    love.graphics.rectangle("fill", hx, hy, hw, hh, 14, 14)
-    love.graphics.setColor(LINE)
-    love.graphics.rectangle("line", hx, hy, hw, hh, 14, 14)
+    local hx, hy2, hw, hh = padL, dockY - 78, g.w - padL - padR, 50
+    love.graphics.setColor(8 / 255, 9 / 255, 14 / 255, 0.72)
+    love.graphics.rectangle("fill", hx, hy2, hw, hh, 12, 12)
     love.graphics.setFont(g.fonts.small)
     love.graphics.setColor(PAPER)
-    love.graphics.printf(hint, hx + 10, hy + 10, hw - 20, "left")
+    love.graphics.printf(hint, hx + 10, hy2 + 8, hw - 20, "left")
   end
 
   -- overlays
@@ -475,11 +497,11 @@ function M.play(g)
 
   layout.stage = {
     x = 0,
-    y = hy + 48 + bagH + 8,
+    y = hy + 52 + bagH + 8,
     w = g.w,
-    h = (dockY - 28) - (hy + 48 + bagH + 8),
+    h = (dockY - 28) - (hy + 52 + bagH + 8),
   }
-  layout.hudTop = hy + 48 + bagH
+  layout.hudTop = hy + 52 + bagH
   layout.dockY = dockY
 end
 
@@ -502,10 +524,8 @@ end
 function M.drawSky(g)
   love.graphics.setColor(VOID)
   love.graphics.rectangle("fill", 0, 0, g.w, g.h)
-  love.graphics.setColor(110 / 255, 130 / 255, 190 / 255, 0.18)
-  love.graphics.ellipse("fill", g.w * 0.5, -20, g.w * 0.7, 120)
-  love.graphics.setColor(90 / 255, 40 / 255, 70 / 255, 0.16)
-  love.graphics.ellipse("fill", g.w * 0.1, g.h * 0.9, g.w * 0.5, 90)
+  love.graphics.setColor(110 / 255, 130 / 255, 190 / 255, 0.1)
+  love.graphics.ellipse("fill", g.w * 0.5, -28, g.w * 0.55, 90)
 end
 
 return M
