@@ -2233,6 +2233,9 @@ export function captainBeat(match) {
   if (needRelics && !(match.mechanics.kitchenChain && (need.food || need.crew)) && !(wantGuns && waveSoon) && kissNearestRelic(match)) return true;
 
   if (allowed.has("scanner") && !hasJob(match, "scanner")) return placeBest(match, "scanner", scoreNearCoreCells);
+  if (allowed.has("shield") && !hasJob(match, "shield") && (need.rooms?.shield || match.mechanics.flares)) {
+    return placeBest(match, "shield", scoreNearCoreCells);
+  }
   let gunsWanted = need.rooms?.weapons || 0;
   if (wantGuns && (waveSoon || match.enemies.length > 0)) gunsWanted = Math.max(gunsWanted, 1);
   if (match.enemies.length >= 3 && (!needRelics || mineral >= 18)) gunsWanted = Math.max(gunsWanted, 2);
@@ -2240,9 +2243,6 @@ export function captainBeat(match) {
   if (allowed.has("weapons") && guns < gunsWanted) {
     if (placeBest(match, "weapons", scoreNearCoreCells)) return true;
     return bagHold(match);
-  }
-  if (allowed.has("shield") && !hasJob(match, "shield") && (need.rooms?.shield || match.mechanics.flares)) {
-    return placeBest(match, "shield", scoreNearCoreCells);
   }
   if (allowed.has("garden") && !hasJob(match, "garden") && wantGarden) {
     return placeBest(match, "garden", scoreNearCoreCells);

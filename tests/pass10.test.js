@@ -75,6 +75,24 @@ describe("leftover interiors are not already in the pantry", () => {
     assert.equal(l.win.thaw, true);
     assert.ok(l.mechanics.kitchenChain);
   });
+
+  it("lets Storm Season raise a shield before the star and the third wave", () => {
+    const l = levelById("3-06");
+    assert.ok(l.mechanics.flares.first >= 20, l.mechanics.flares.first);
+    assert.ok(l.mechanics.flares.damage <= 10, l.mechanics.flares.damage);
+    assert.ok(l.waves.first >= 24, l.waves.first);
+    assert.ok(l.start.minerals >= 24, l.start.minerals);
+  });
+
+  it("keeps Black Ice frost on a belt a hearth can actually finish", () => {
+    const l = levelById("6-05");
+    const core = l.core || { x: 4, y: 6 };
+    assert.ok(l.start.minerals >= 24, l.start.minerals);
+    for (const ice of l.ice) {
+      const man = Math.abs(ice.x - core.x) + Math.abs(ice.y - core.y);
+      assert.ok(man <= 4, `ice ${ice.x},${ice.y} is ${man} from core`);
+    }
+  });
 });
 
 describe("Frost actually asks you to walk north across ice", () => {
