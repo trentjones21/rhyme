@@ -395,11 +395,22 @@ local function drawPaths(match, fonts)
       px, py = nx, ny
     end
     col(hue, 0.7)
-    love.graphics.circle("line", px, py, 4)
-    if fonts and fonts.tiny then
+    love.graphics.circle("line", px, py, 3.5)
+    local dest = k.job and k.job.target
+    if dest and fonts and fonts.tiny then
       love.graphics.setFont(fonts.tiny)
-      col(hue, 0.9)
-      love.graphics.printf(JOB_WORD[chip] or "WALK", x - 22, y - 18, 44, "center")
+      col(hue, 0.92)
+      local dx = dest.cx - (match.core and match.core.cx or dest.cx)
+      local dy = dest.cy - (match.core and match.core.cy or dest.cy)
+      local lx, ly
+      if math.abs(dx) >= math.abs(dy) then
+        lx = dest.cx + (dx >= 0 and 10 or -42)
+        ly = dest.cy - 6
+      else
+        lx = dest.cx - 16
+        ly = dest.cy + (dy >= 0 and 10 or -16)
+      end
+      love.graphics.printf(JOB_WORD[chip] or "WALK", lx, ly, 40, "left")
     end
     ::cont::
   end

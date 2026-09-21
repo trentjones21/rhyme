@@ -291,7 +291,7 @@ function love.load()
     sim.setTool(m, "corridor")
     sim.tapCell(m, 4, 8)
     sim.tapCell(m, 2, 6)
-    for _ = 1, 120 do sim.step(m, 1 / 60) end
+    for _ = 1, 100 do sim.step(m, 1 / 60) end
     consumeEvents()
     shotPending = true
     shotName = "pass18_spine.png"
