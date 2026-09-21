@@ -2149,6 +2149,18 @@ function nearestUnlinkedRelics(match) {
 function kissNearestRelic(match) {
   const spots = nearestUnlinkedRelics(match);
   if (!spots.length) return false;
+  return roadTowardSpots(match, [spots[0]]);
+}
+
+function depositSpots(match) {
+  return [...match.deposits].map((k) => {
+    const [x, y] = k.split(",").map(Number);
+    return { x, y };
+  });
+}
+
+function roadTowardSpots(match, spots) {
+  if (!spots.length) return false;
   const live = reachableBuilt(match);
   return placeBest(match, "corridor", (_, cells) => {
     let touchLive = false;
@@ -2163,8 +2175,21 @@ function kissNearestRelic(match) {
       }
     }
     if (!touchLive) return -9999;
-    return scoreTowardSpots(cells, [spots[0]]);
+    return scoreTowardSpots(cells, spots);
   });
+}
+
+function placeExtractorOrRoad(match, allowRoad) {
+  const deposits = depositSpots(match);
+  if (
+    placeBest(match, "extractor", (_, cells) =>
+      deposits.length ? scoreTowardSpots(cells, deposits) : scoreNearCoreCells(match, cells)
+    )
+  ) {
+    return true;
+  }
+  if (allowRoad && deposits.length && roadTowardSpots(match, deposits)) return true;
+  return false;
 }
 
 function bagHold(match) {
@@ -2216,19 +2241,7 @@ export function captainBeat(match) {
   if (mineral < 4 && unpaid > 0) return false;
 
   if (needGunNow && placeBest(match, "weapons", scoreNearCoreCells)) return true;
-  if (wantExtract) {
-    const deposits = [...match.deposits].map((k) => {
-      const [x, y] = k.split(",").map(Number);
-      return { x, y };
-    });
-    if (
-      placeBest(match, "extractor", (_, cells) =>
-        deposits.length ? scoreTowardSpots(cells, deposits) : scoreNearCoreCells(match, cells)
-      )
-    ) {
-      return true;
-    }
-  }
+  if (wantExtract && placeExtractorOrRoad(match, need.mineral != null)) return true;
 
   if (needRelics && !(match.mechanics.kitchenChain && (need.food || need.crew)) && !(wantGuns && waveSoon) && kissNearestRelic(match)) return true;
 
@@ -2297,17 +2310,7 @@ export function captainBeat(match) {
     mealsReady &&
     (coreStock(match, "mineral") < 10 || (need.overloads || 0) > (match.overloads || 0) || need.mineral != null)
   ) {
-    const deposits = [...match.deposits].map((k) => {
-      const [x, y] = k.split(",").map(Number);
-      return { x, y };
-    });
-    if (
-      placeBest(match, "extractor", (_, cells) =>
-        deposits.length ? scoreTowardSpots(cells, deposits) : scoreNearCoreCells(match, cells)
-      )
-    ) {
-      return true;
-    }
+    if (placeExtractorOrRoad(match, need.mineral != null || (need.overloads || 0) > (match.overloads || 0))) return true;
     return bagHold(match);
   }
   if ((need.overloads || 0) > (match.overloads || 0)) {

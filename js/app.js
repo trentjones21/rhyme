@@ -453,14 +453,23 @@ function finish() {
   }
 }
 
+const SIM_DT = 1 / 60;
+let simAcc = 0;
+
 function loop(now) {
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const frame = Math.min(0.05, (now - last) / 1000);
   last = now;
+  simAcc += frame;
   try {
     if (screen === "play" && match) {
       if (match.status === "playing") {
-        for (let i = 0; i < speed; i++) step(match, dt);
+        while (simAcc >= SIM_DT) {
+          for (let i = 0; i < speed; i++) step(match, SIM_DT);
+          simAcc -= SIM_DT;
+        }
         consumeEvents();
+      } else {
+        simAcc = 0;
       }
       const canvas = $("stage");
       const ctx = canvas.getContext("2d");
@@ -473,6 +482,7 @@ function loop(now) {
   } catch (err) {
     console.warn(err);
   }
+  if (screen !== "play" || !match) simAcc = 0;
   requestAnimationFrame(loop);
 }
 
@@ -545,6 +555,7 @@ $("briefBack").onclick = () => {
 };
 $("briefStart").onclick = async () => {
   await audio.unlock();
+  buzz(10);
   startLevel(chosen);
 };
 $("howBack").onclick = () => {
@@ -658,7 +669,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=19").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=20").catch(() => {});
 }
 
 renderTitle();
