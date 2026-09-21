@@ -96,7 +96,7 @@ const CHIP_HUE = {
 
 function renderTitle() {
   const st = campaignStats(save, LEVELS);
-  $("progressLine").textContent = `${st.cleared}/${st.total} stations  ·  ${st.starTotal} stars`;
+  $("progressLine").textContent = `${st.cleared}/${st.total} stations  ·  ${st.starTotal}/${st.starMax} stars`;
 }
 
 function renderWorlds() {
@@ -106,12 +106,13 @@ function renderWorlds() {
     const open = worldUnlocked(save, world.id, LEVELS);
     const levels = levelsInWorld(world.id);
     const done = levels.filter((l) => save.stars[l.id]).length;
+    const stars = levels.reduce((n, l) => n + (save.stars[l.id] || 0), 0);
     const look = worldLook(world.id);
     const b = document.createElement("button");
     b.className = "card";
     b.disabled = !open;
     b.style.boxShadow = `inset 3px 0 0 ${look.accent}, inset 0 1px 0 rgba(255,255,255,0.06)`;
-    b.innerHTML = `<b>${world.id}  ·  ${world.name}</b><span>${open ? world.blurb : "Clear the previous shore first."}  ${done}/6</span>`;
+    b.innerHTML = `<b>${world.id}  ·  ${world.name}</b><span>${open ? world.blurb : "Clear the previous shore first."}  ${done}/6  ·  ${stars}/18★</span>`;
     b.onclick = () => {
       worldId = world.id;
       renderLevels();
@@ -156,6 +157,12 @@ function openBrief(level) {
   $("briefLesson").textContent = level.lesson || "";
   $("briefName").textContent = level.name;
   $("briefBody").textContent = level.briefing || "";
+  const world = WORLDS.find((w) => w.id === level.world);
+  const pack = levelsInWorld(level.world);
+  const idx = pack.findIndex((l) => l.id === level.id) + 1;
+  const earned = save.stars[level.id] || 0;
+  const best = earned ? "★".repeat(earned) + "☆".repeat(3 - earned) : "unplayed";
+  $("briefMeta").textContent = `${world.name}  ·  ${idx} of 6  ·  par ${level.par}s  ·  ${best}`;
   show("brief");
 }
 
@@ -422,7 +429,9 @@ function finish() {
   ov.classList.add("on");
   $("play").classList.add("ended");
   const nxt = match.status === "won" ? nextLevel(chosen.id) : null;
-  const spec = endOverlaySpec(match.status, { hasNext: !!nxt });
+  const nextWorld = nxt && WORLDS.find((w) => w.id === nxt.world);
+  const worldGate = nxt && chosen && nxt.world !== chosen.world && nextWorld ? nextWorld.name : "";
+  const spec = endOverlaySpec(match.status, { hasNext: !!nxt, worldGate: worldGate || undefined });
   $("endTitle").textContent = spec.title;
   $("endPrimary").textContent = spec.primary;
   $("endRetry").hidden = !spec.retry;
@@ -649,7 +658,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=18").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=19").catch(() => {});
 }
 
 renderTitle();

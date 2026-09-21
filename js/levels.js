@@ -186,7 +186,7 @@ export const LEVELS = [
     start: { minerals: 8, food: 4, crew: 3 },
     deposits: [{ x: 1, y: 6 }],
     allowed: ["corridor", "extractor"],
-    win: { rooms: { extractor: 1 }, mineral: 8 },
+    win: { rooms: { extractor: 1 }, mineral: 14 },
     par: 80,
   }),
   L("1-04", 1, "Watchpost", {
@@ -210,14 +210,14 @@ export const LEVELS = [
   }),
   L("1-06", 1, "Station Hands", {
     lesson: "A living station feeds, mines, and shoots.",
-    briefing: "You have the whole quiet kit. Hold two waves. Do not let the pantry go dark.",
+    briefing: "You have the whole quiet kit. Grow past the opening pantry, staff a gun, and hold two waves.",
     hint: "Two guns on opposite sides beat one fancy spine.",
     start: { minerals: 16, food: 10, crew: 4 },
     deposits: [{ x: 1, y: 6 }, { x: 7, y: 6 }],
     allowed: ["corridor", "garden", "extractor", "weapons", "quarters"],
     eatRate: 0.018,
     waves: { first: 24, interval: 28, count: (n) => 1 + n, hp: (n) => 24 + n * 10, max: 2 },
-    win: { surviveWaves: 2, food: 1 },
+    win: { surviveWaves: 2, food: 12, rooms: { garden: 1, extractor: 1, weapons: 1 } },
     par: 90,
   }),
 
@@ -310,12 +310,12 @@ export const LEVELS = [
   }),
   L("3-02", 3, "Umbrella", {
     lesson: "One umbrella cannot cover a sprawling station.",
-    briefing: "Keep both a glass plot and an extractor alive through two flares, then bank food.",
+    briefing: "Keep both a glass plot and an extractor alive through two flares, then bank food past the opening six.",
     start: { minerals: 18, food: 6, crew: 4 },
     deposits: [{ x: 1, y: 9 }],
     mechanics: { flares: { first: 18, interval: 16, damage: 12, telegraph: 2.6 } },
     allowed: ["corridor", "garden", "extractor", "shield"],
-    win: { rooms: { shield: 1, extractor: 1 }, food: 4 },
+    win: { rooms: { shield: 1, extractor: 1 }, food: 8, flares: 2 },
     par: 90,
   }),
   L("3-03", 3, "Exposed Vein", {
@@ -376,7 +376,7 @@ export const LEVELS = [
   L("4-02", 4, "Opposite Shore", {
     lesson: "Two relics, two directions. Do not spend the whole bank on one road.",
     briefing: "North and south monuments. Link both.",
-    start: { minerals: 12, food: 6, crew: 3 },
+    start: { minerals: 20, food: 6, crew: 3 },
     relics: [{ x: 4, y: 0 }, { x: 4, y: 12 }],
     allowed: ["corridor"],
     win: { relics: 2 },
@@ -385,10 +385,10 @@ export const LEVELS = [
   L("4-03", 4, "Guarded Archive", {
     lesson: "Scouts smell new floor.",
     briefing: "Link two relics and hold one wave. A gun on the new road is not vanity.",
-    start: { minerals: 16, food: 8, crew: 4 },
+    start: { minerals: 32, food: 8, crew: 4 },
     relics: [{ x: 0, y: 2 }, { x: 8, y: 10 }],
     allowed: ["corridor", "weapons", "garden"],
-    waves: { first: 28, interval: 30, count: 3, hp: 34, max: 1 },
+    waves: { first: 40, interval: 30, count: 3, hp: 34, max: 1 },
     win: { relics: 2, surviveWaves: 1 },
     par: 90,
   }),
@@ -429,17 +429,16 @@ export const LEVELS = [
   L("4-06", 4, "Surveyors", {
     lesson: "Four relics, two waves, a star that does not care about archaeology.",
     briefing: "The shore remembers weather. Bring a shield. Touch every monument. Hold.",
-    start: { minerals: 40, food: 16, crew: 5 },
+    start: { minerals: 48, food: 16, crew: 5 },
     relics: [
-      { x: 0, y: 0 },
-      { x: 8, y: 0 },
-      { x: 0, y: 12 },
-      { x: 8, y: 12 },
+      { x: 2, y: 2 },
+      { x: 6, y: 2 },
+      { x: 2, y: 10 },
+      { x: 6, y: 10 },
     ],
-    deposits: [{ x: 1, y: 6 }],
     mechanics: { kitchenChain: true, flares: { first: 16, interval: 18, damage: 12, telegraph: 2.6 } },
     allowed: ["corridor", "garden", "extractor", "kitchen", "weapons", "shield", "quarters"],
-    waves: { first: 22, interval: 24, count: (n) => 2 + n, hp: (n) => 28 + n * 10, max: 2 },
+    waves: { first: 32, interval: 24, count: (n) => 2 + n, hp: (n) => 28 + n * 10, max: 2 },
     eatRate: 0.018,
     win: { relics: 4, surviveWaves: 2 },
     par: 140,
@@ -553,15 +552,15 @@ export const LEVELS = [
 
   L("6-01", 6, "Frost", {
     lesson: "Ice is floor you already own, only slower.",
-    briefing: "The northern arm is frozen. Cross it anyway and lay two corridors beyond.",
+    briefing: "The northern arm is frozen. Cross it anyway and lay two corridors beyond the frost.",
     start: { minerals: 10, food: 6, crew: 3 },
     ice: [
-      { x: 4, y: 5 },
       { x: 4, y: 4 },
       { x: 4, y: 3 },
+      { x: 4, y: 2 },
     ],
     allowed: ["corridor"],
-    win: { corridors: 2 },
+    win: { corridors: 2, reachY: 1 },
     par: 50,
   }),
   L("6-02", 6, "Thaw", {
@@ -604,7 +603,7 @@ export const LEVELS = [
   }),
   L("6-04", 6, "Frozen Garden", {
     lesson: "You can grow on ice. You will hate the commute.",
-    briefing: "Eight meals. Thaw or endure. The galley chain is on.",
+    briefing: "Cook past the opening eight, then thaw. The galley chain is on.",
     start: { minerals: 16, food: 8, crew: 4 },
     ice: [
       { x: 3, y: 8 },
@@ -616,7 +615,7 @@ export const LEVELS = [
     mechanics: { kitchenChain: true },
     allowed: ["corridor", "garden", "kitchen", "heater"],
     eatRate: 0.016,
-    win: { food: 8, thaw: true },
+    win: { food: 10, thaw: true },
     par: 90,
   }),
   L("6-05", 6, "Black Ice", {

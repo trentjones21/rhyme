@@ -1,8 +1,8 @@
-export function endOverlaySpec(status, { hasNext } = {}) {
+export function endOverlaySpec(status, { hasNext, worldGate } = {}) {
   if (status === "won") {
     return {
       title: "Stable",
-      primary: hasNext ? "Next station" : "Campaign complete",
+      primary: worldGate ? `Enter ${worldGate}` : hasNext ? "Next station" : "Campaign complete",
       retry: true,
     };
   }

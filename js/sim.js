@@ -1787,6 +1787,17 @@ function checkWin(match) {
   if (w.flares != null && (match.flaresCleared || 0) < w.flares) return false;
   if (w.folds != null && (match.folds || 0) < w.folds) return false;
   if (w.overloads != null && (match.overloads || 0) < w.overloads) return false;
+  if (w.reachY != null) {
+    let ok = false;
+    for (const room of match.rooms) {
+      if (room.type === "core" || !room.built || room.dead) continue;
+      if (room.cells.some((c) => c.y <= w.reachY)) {
+        ok = true;
+        break;
+      }
+    }
+    if (!ok) return false;
+  }
   return true;
 }
 
@@ -2219,7 +2230,7 @@ export function captainBeat(match) {
     }
   }
 
-  if (needRelics && !match.mechanics.kitchenChain && !(wantGuns && waveSoon) && kissNearestRelic(match)) return true;
+  if (needRelics && !(match.mechanics.kitchenChain && (need.food || need.crew)) && !(wantGuns && waveSoon) && kissNearestRelic(match)) return true;
 
   if (allowed.has("scanner") && !hasJob(match, "scanner")) return placeBest(match, "scanner", scoreNearCoreCells);
   let gunsWanted = need.rooms?.weapons || 0;
@@ -2303,6 +2314,19 @@ export function captainBeat(match) {
     const ex = match.rooms.find((r) => (r.type === "extractor" || r.type === "garden") && r.built && !r.dead);
     if (ex && staffed(match, ex) >= 1) return overloadRoom(match, ex);
   }
+  if (need.reachY != null || need.corridors != null) {
+    const north = need.reachY != null
+      ? match.rooms.some((r) => r.type !== "core" && r.built && !r.dead && r.cells.some((c) => c.y <= need.reachY))
+      : true;
+    const roads = match.rooms.filter((r) => r.type === "corridor" && r.built && !r.dead).length;
+    const wantRoad = allowed.has("corridor") && (!north || (need.corridors != null && roads < need.corridors));
+    if (wantRoad) {
+      const spots = need.reachY != null ? [{ x: (match.level.core && match.level.core.x) || 4, y: need.reachY }] : null;
+      if (placeBest(match, "corridor", spots ? (_, cells) => scoreTowardSpots(cells, spots) : scoreNearCoreCells)) {
+        return true;
+      }
+    }
+  }
   if (needRelics) return bagHold(match);
   return bagHold(match);
 }
@@ -2335,6 +2359,14 @@ export function objectiveText(match) {
   if (w.flares != null) parts.push(`Flares ${match.flaresCleared || 0}/${w.flares}`);
   if (w.folds != null) parts.push(`Folds ${match.folds || 0}/${w.folds}`);
   if (w.overloads != null) parts.push(`Over ${match.overloads || 0}/${w.overloads}`);
+  if (w.reachY != null) {
+    let best = 99;
+    for (const room of match.rooms) {
+      if (room.type === "core" || !room.built || room.dead) continue;
+      for (const c of room.cells) best = Math.min(best, c.y);
+    }
+    parts.push(best <= w.reachY ? "North shore" : `North y ${best === 99 ? "—" : best}→${w.reachY}`);
+  }
   return parts.join("  ·  ") || "Hold the station";
 }
 
