@@ -77,6 +77,7 @@ function chipId(k) {
     return "gun";
   }
   if (j.kind === "idlewalk") return "walk";
+  if (j.kind === "wait" && k.state === "walking") return "walk";
   return k.carry ? "haul" : "wait";
 }
 
@@ -590,6 +591,7 @@ function makeRoom(match, type, x, y, rot, instant, shape) {
     busy: {},
     cx: 0,
     cy: 0,
+    ring: 0,
   };
   for (const c of cells) {
     const cell = { x: c.x, y: c.y, room };
@@ -621,6 +623,8 @@ function spawnKapsel(match, room) {
     ox: 0,
     oy: 0,
     trailT: 0,
+    facing: 0,
+    docked: 0,
   };
   match.kapsels.push(k);
   return k;
@@ -943,6 +947,21 @@ function nearestKapsel(match, room, assignedToThis = false) {
   return best;
 }
 
+function sendKapsel(match, k, room) {
+  const job = chooseJob(match, k);
+  if (job) {
+    startJob(k, job);
+    return;
+  }
+  const from = atPixel(match, k.x, k.y);
+  const p = routeToRoom(match, from.x, from.y, room);
+  if (!p) return;
+  k.job = { kind: "wait", target: room, path: p };
+  k.path = p;
+  k.state = p.length ? "walking" : "working";
+  k.label = p.length ? "Walking" : "Waiting";
+}
+
 export function assignTo(match, room) {
   if (!room || room.dead) return false;
   if (room.type === "core") return false;
@@ -957,9 +976,12 @@ export function assignTo(match, room) {
   k.assignment = room.id;
   k.retry = 0;
   match.selected = room.id;
+  room.ring = 1;
+  k.facing = Math.atan2(room.cy - k.y, room.cx - k.x);
   match.events.push({ type: "assign", room: room.id });
   emitFx(match, "assign", k.x, k.y, "#f3f0e8");
   emitFx(match, "pulse", room.cx, room.cy, room.def.hue);
+  sendKapsel(match, k, room);
   if (match.tutorial && match.tutorial.needAssign) {
     match.tutorial.needAssign = false;
     match.tutorial.assigned = true;
@@ -1018,6 +1040,8 @@ export function tapCell(match, gx, gy) {
     if (!room) return false;
     return overloadRoom(match, room);
   }
+  if (room) return assignTo(match, room);
+  if (match.tool === "assign") return false;
   return tryPlace(match, match.tool, gx, gy);
 }
 
@@ -1204,6 +1228,7 @@ function stepAlong(match, k, dt) {
   const man = Math.abs(here.x - node.x) + Math.abs(here.y - node.y);
   if (man > 1) {
     const p = pixelCenter(match, node.x, node.y);
+    k.facing = Math.atan2(p.y - k.y, p.x - k.x);
     k.x = p.x;
     k.y = p.y;
     k.path.shift();
@@ -1215,6 +1240,7 @@ function stepAlong(match, k, dt) {
   const p = pixelCenter(match, node.x, node.y);
   const dx = p.x - k.x;
   const dy = p.y - k.y;
+  if (dx || dy) k.facing = Math.atan2(dy, dx);
   const d = Math.hypot(dx, dy);
   let speed = k.speed;
   const g = atPixel(match, k.x, k.y);
@@ -1411,6 +1437,13 @@ function updateKapsels(match, dt) {
       if (stepAlong(match, k, dt)) {
         k.state = "working";
         k.workTimer = 0;
+        const dest = k.job && k.job.target;
+        if (dest && k.assignment === dest.id) {
+          match.events.push({ type: "dock", room: dest.id });
+          emitFx(match, "pulse", dest.cx, dest.cy, dest.def.hue);
+          dest.ring = Math.max(dest.ring || 0, 0.85);
+          k.docked = 1;
+        }
       }
     } else {
       work(match, k, dt);
@@ -1848,6 +1881,15 @@ function eat(match, dt) {
   } else match.starve = Math.max(0, match.starve - dt * 2);
 }
 
+function decayAssignJuice(match, dt) {
+  for (const room of match.rooms) {
+    if (room.ring > 0) room.ring = Math.max(0, room.ring - dt / 0.7);
+  }
+  for (const k of match.kapsels) {
+    if (k.docked > 0) k.docked = Math.max(0, k.docked - dt / 0.4);
+  }
+}
+
 export function step(match, dt) {
   dt = Math.min(dt, 0.05);
   if (match.status === "paused") return;
@@ -1858,6 +1900,7 @@ export function step(match, dt) {
   if (match.thinkLocked) {
     match.shake = Math.max(0, match.shake - dt);
     match.pulse = Math.max(0, match.pulse - dt);
+    decayAssignJuice(match, dt);
     for (let i = match.fx.length - 1; i >= 0; i--) {
       match.fx[i].t += dt;
       if (match.fx[i].t >= match.fx[i].life) match.fx.splice(i, 1);
@@ -1867,6 +1910,7 @@ export function step(match, dt) {
   match.time += dt;
   match.shake = Math.max(0, match.shake - dt);
   match.pulse = Math.max(0, match.pulse - dt);
+  decayAssignJuice(match, dt);
   updateKapsels(match, dt);
   updateEnemies(match, dt);
   updateHeaters(match, dt);

@@ -373,6 +373,7 @@ function consumeEvents() {
       audio.play("assign");
       buzz(8);
     }
+    if (ev.type === "dock") audio.play("seat");
     if (ev.type === "tick") audio.play("tick");
     if (ev.type === "built") audio.play("built");
     if (ev.type === "incoming") audio.play("incoming");
@@ -650,7 +651,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=22").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=23").catch(() => {});
 }
 
 renderTitle();

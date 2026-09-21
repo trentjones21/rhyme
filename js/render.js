@@ -107,6 +107,7 @@ export function drawWorld(ctx, match, view, now) {
   drawShieldAuras(ctx, match, now);
   drawScanCones(ctx, match, now);
   drawRooms(ctx, match, now);
+  drawAssignRing(ctx, match);
   drawStaffGlow(ctx, match, now);
   drawTrails(ctx, match);
   drawAssignBeams(ctx, match);
@@ -626,17 +627,33 @@ function drawTrails(ctx, match) {
   }
 }
 
+function drawAssignRing(ctx, match) {
+  for (const room of match.rooms) {
+    if (!room.ring || room.dead) continue;
+    const a = room.ring;
+    const cell = match.layout.cell;
+    const R = cell * (0.72 + (1 - a) * 0.7);
+    ctx.save();
+    ctx.strokeStyle = `rgba(243,240,232,${0.5 * a})`;
+    ctx.lineWidth = 1.7;
+    ctx.beginPath();
+    ctx.arc(room.cx, room.cy, R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 function drawAssignBeams(ctx, match) {
   ctx.save();
   ctx.setLineDash([3, 5]);
-  ctx.lineWidth = 1.2;
+  ctx.lineWidth = 1.35;
   for (const k of match.kapsels) {
-    if (!k.assignment) continue;
+    if (!k.assignment || k.state !== "walking") continue;
     const room = match.rooms.find((r) => r.id === k.assignment);
     if (!room || room.type === "core" || room.dead) continue;
     const x = k.x + (k.ox || 0);
     const y = k.y + (k.oy || 0);
-    ctx.strokeStyle = "rgba(243,240,232,0.14)";
+    ctx.strokeStyle = "rgba(243,240,232,0.28)";
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(room.cx, room.cy);

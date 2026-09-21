@@ -146,6 +146,7 @@ export const TONES = {
   go: { freq: 392, dur: 0.12, type: "sine", vol: 0.036, slide: 620 },
   relic: { freq: 523, dur: 0.18, type: "sine", vol: 0.036, slide: 784 },
   dock: { freq: 262, dur: 0.16, type: "sine", vol: 0.032, slide: 392 },
+  seat: { freq: 494, dur: 0.045, type: "sine", vol: 0.018 },
   supply: { freq: 330, dur: 0.16, type: "sine", vol: 0.032, slide: 494 },
   solar: { freq: 110, dur: 0.24, type: "sine", vol: 0.03, slide: 196 },
   fold: { freq: 415, dur: 0.16, type: "sine", vol: 0.03, slide: 622 },
@@ -167,6 +168,7 @@ const VOICE_GAP = {
   incoming: 220,
   haul: 90,
   tick: 80,
+  seat: 90,
 };
 
 export function resetVoices() {
