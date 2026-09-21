@@ -205,14 +205,16 @@ describe("look and juice for mid-campaign stations", () => {
     );
   });
 
-  it("draws relic halos, gate folds, and a hungry pantry", () => {
+  it("draws relic halos, gate folds, and a hungry pantry", async () => {
     const render = readFileSync(new URL("../js/render.js", import.meta.url), "utf8");
     const app = readFileSync(new URL("../js/app.js", import.meta.url), "utf8");
     const css = readFileSync(new URL("../css/rhyme.css", import.meta.url), "utf8");
     const audio = readFileSync(new URL("../js/audio.js", import.meta.url), "utf8");
     assert.equal(/relicHalo|kissRing/.test(render), true, "render missing relic halo");
     assert.equal(/gateFold|foldRing/.test(render), true, "render missing gate fold");
-    assert.equal(/foldRibbon/.test(render), true, "render missing gate fold ribbon");
+    assert.equal(/drawFoldRibbon|foldRibbon/.test(render), true, "render missing gate fold ribbon");
+    const mod = await import("../js/render.js");
+    assert.equal(typeof mod.drawWorld, "function");
     assert.equal(app.includes("hunger"), true, "hud missing pantry hunger");
     assert.equal(app.includes("thumbPlay"), true, "localhost thumb helper missing");
     assert.equal(app.includes("startFinale"), true);

@@ -256,7 +256,7 @@ function relicHalo(ctx, match, relic, now) {
     }
 }
 
-function foldRibbon(ctx, match, now) {
+function drawFoldRibbon(ctx, match, now) {
   const gates = match.rooms.filter((r) => r.type === "gate" && r.built && !r.dead);
   if (gates.length < 2) return;
   ctx.save();
@@ -286,6 +286,8 @@ function foldRibbon(ctx, match, now) {
   }
   ctx.restore();
 }
+
+function gateFold(ctx, now, room) {
   const spin = now * 0.003 + room.id;
   ctx.strokeStyle = `rgba(196,170,240,${0.55 + Math.sin(now * 0.006) * 0.2})`;
   ctx.strokeRect(-6, -6, 12, 12);
