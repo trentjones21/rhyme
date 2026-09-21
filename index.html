@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#07080d" />
+    <meta name="apple-mobile-web-app-title" content="Rhyme" />
+    <title>Rhyme</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="css/rhyme.css" />
+  </head>
+  <body>
+    <div id="phone">
+      <div class="grain" aria-hidden="true"></div>
+      <div id="notch"></div>
+      <div id="app">
+        <section id="title" class="screen on">
+          <div class="sky" aria-hidden="true"></div>
+          <div class="pad">
+            <div class="brand">GRAPEFRUKT, REMEMBERED</div>
+            <div class="logo plus" aria-hidden="true">
+              <i class="z"></i><i class="z"></i><i class="c"></i><i class="z"></i><i class="z"></i>
+              <i class="z"></i><i class="z"></i><i class="c"></i><i class="z"></i><i class="z"></i>
+              <i class="g"></i><i class="c"></i><i class="c"></i><i class="c"></i><i class="m"></i>
+              <i class="z"></i><i class="z"></i><i class="c"></i><i class="z"></i><i class="z"></i>
+              <i class="z"></i><i class="z"></i><i class="z"></i><i class="z"></i><i class="z"></i>
+            </div>
+            <h1>RHYME</h1>
+            <p class="lede">Forty-two stations. Quiet geometry, white kapsels, and a long campaign that ends in Last Geometry.</p>
+          </div>
+          <div class="stack">
+            <button class="btn" id="playCampaign">Play</button>
+            <button class="btn ghost" id="openWorlds">Stations</button>
+            <button class="btn ghost" id="openHow">How to play</button>
+            <div class="tiny" id="progressLine">42 stations</div>
+            <div id="installSheet" class="install" hidden>
+              <button class="x" id="installDismiss" aria-label="Dismiss">×</button>
+              <b>Add to Home Screen</b>
+              <p id="installCopy">Tap Share, then Add to Home Screen for a portrait shell with haptics.</p>
+              <button class="btn" id="installBtn" hidden>Install</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="worlds" class="screen">
+          <div class="pad toprow">
+            <button class="btn ghost" id="worldsBack" style="min-height:44px;padding:0 14px">Back</button>
+            <div class="brand">WORLDS</div>
+            <span style="width:64px"></span>
+          </div>
+          <div class="worlds" id="worldList"></div>
+        </section>
+
+        <section id="levels" class="screen">
+          <div class="pad toprow">
+            <button class="btn ghost" id="levelsBack" style="min-height:44px;padding:0 14px">Back</button>
+            <div class="brand" id="worldTitle">WORLD</div>
+            <span style="width:64px"></span>
+          </div>
+          <div class="levels" id="levelList"></div>
+        </section>
+
+        <section id="brief" class="screen">
+          <div class="pad toprow">
+            <button class="btn ghost" id="briefBack" style="min-height:44px;padding:0 14px">Back</button>
+            <div class="brand tight" id="briefId">1-01</div>
+            <span style="width:64px"></span>
+          </div>
+          <div class="briefpad">
+            <div class="lesson" id="briefLesson"></div>
+            <div class="briefmeta" id="briefMeta"></div>
+            <h2 id="briefName"></h2>
+            <p class="bodycopy" id="briefBody"></p>
+          </div>
+          <div class="stack">
+            <button class="btn" id="briefStart">Begin</button>
+          </div>
+        </section>
+
+        <section id="play" class="screen">
+          <div id="hud">
+            <button class="iconbtn" id="pauseBtn" aria-label="Pause">II</button>
+            <div class="stats">
+              <div class="stat"><b><i style="background:var(--mineral)"></i><span id="mineralN">0</span></b><em>Minerals</em></div>
+              <div class="stat"><b><i style="background:var(--food)"></i><span id="foodN">0</span></b><em>Pantry</em></div>
+              <div class="stat"><b><span id="crewN">0</span></b><em>Kapsels</em></div>
+              <div class="wave" id="waveN">Wave</div>
+            </div>
+            <button id="speed" aria-label="Speed">1×</button>
+          </div>
+          <div id="jobs" class="jobs" aria-label="Kapsel jobs"></div>
+          <div id="bag" class="bag" hidden></div>
+          <div id="stagewrap">
+            <canvas id="stage"></canvas>
+            <div id="hint"></div>
+          </div>
+          <div id="objective"></div>
+          <div id="dock">
+            <div id="tools"></div>
+            <div class="row2">
+              <button id="rotateBtn">Rotate</button>
+              <button id="holdBtn" disabled>Hold</button>
+              <button id="recallBtn">Recall</button>
+              <button id="muteBtn">Sound</button>
+            </div>
+          </div>
+          <div class="overlay" id="pauseOv">
+            <h2>Paused</h2>
+            <p>The station holds its breath.</p>
+            <button class="btn" id="resumeBtn">Resume</button>
+            <button class="btn ghost" id="restartBtn">Restart</button>
+            <button class="btn ghost" id="pauseMap">Stations</button>
+          </div>
+          <div class="overlay" id="endOv">
+            <h2 id="endTitle">Stable</h2>
+            <p id="endBody"></p>
+            <button class="btn" id="endPrimary">Next</button>
+            <button class="btn ghost" id="endRetry">Retry</button>
+            <button class="btn ghost" id="endMap">Stations</button>
+          </div>
+        </section>
+
+        <section id="how" class="screen">
+          <div class="pad toprow">
+            <button class="btn ghost" id="howBack" style="min-height:44px;padding:0 14px">Back</button>
+            <div class="brand">MANUAL</div>
+            <span style="width:64px"></span>
+          </div>
+          <div class="how">
+            <article>
+              <h3>Place</h3>
+              <p>Pick a room from the thumb strip, rotate if you need to, then tap empty floor that kisses the station. Blueprints are not yet walkable.</p>
+            </article>
+            <article>
+              <h3>Assign</h3>
+              <p>White kapsels work where you point them. Tap a room to send the nearest idle kapsel. Tap Recall to pull one home. They haul, build, cook, and man guns themselves.</p>
+            </article>
+            <article>
+              <h3>Feed &amp; mine</h3>
+              <p>Gardens grow. Extractors only bite pink fields. Later kitchens cook sludge into pantry meals. Crew eat from the core, not from cargo in transit.</p>
+            </article>
+            <article>
+              <h3>Hold</h3>
+              <p>Waves come from the void. Weapons are mute until staffed. New worlds add flares, relics, gates, ice, cloaks, gravity, and overclocks — each taught in the station that introduces it.</p>
+            </article>
+            <article>
+              <h3>Cloak</h3>
+              <p>World 7 scouts hide until a staffed scanner sings. Guns cannot lead what they cannot see. Unseen locks the board until you tap Scan.</p>
+            </article>
+            <article>
+              <h3>Gravity</h3>
+              <p>Wells pull scouts into a current. Place a gun where bodies bunch — Well Trap is a kill lane, not a fair fight on the plus.</p>
+            </article>
+            <article>
+              <h3>Overload</h3>
+              <p>Select Over, then tap a staffed extractor or garden. It screams and doubles, then injures itself. Idle mining is not an overload.</p>
+            </article>
+            <article>
+              <h3>Feed first</h3>
+              <p>Gardens keep growing meals even if the kitchen is late. Relics do not feed anyone. On Last Geometry, plant garden and kitchen before you survey monuments, and never keep two unpaid blueprints.</p>
+            </article>
+            <article>
+              <h3>Hull jobs</h3>
+              <p>Scan sees cloaked scouts. Gun shoots what Scan reveals. Aegis eats flares. Two unpaid blueprints jam haulers — finish one dashed room before you stamp another. Last Geometry holds time until you tap GO.</p>
+            </article>
+            <article>
+              <h3>The bag</h3>
+              <p>Late stations deal a random tetromino. You still pick the room’s job. Rotate, or Hold to park a stubborn I or O. Unplaceable pieces are skipped. Add to Home Screen on iPhone for a portrait shell with haptics.</p>
+            </article>
+          </div>
+        </section>
+      </div>
+      <div id="homebar"></div>
+    </div>
+    <script type="module" src="js/app.js?v=35"></script>
+  </body>
+</html>

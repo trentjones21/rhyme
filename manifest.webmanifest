@@ -1,0 +1,30 @@
+{
+  "name": "Rhyme",
+  "short_name": "Rhyme",
+  "description": "A portrait tribute to rymdkapsel.",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#07080d",
+  "background_color": "#07080d",
+  "start_url": "./",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
