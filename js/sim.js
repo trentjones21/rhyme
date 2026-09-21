@@ -180,7 +180,7 @@ const RECRUITS_PER_Q = 2;
 const STOCK_CAP = 8;
 const PANTRY_CAP = 24;
 const CORE_MINERAL_CAP = 36;
-export const TURRET_RANGE = 190;
+export const TURRET_RANGE = 250;
 const TURRET_CD = 1.05;
 const TURRET_DMG = 12;
 export const SHIELD_R = 4.2;
@@ -672,8 +672,14 @@ function emitFx(match, kind, x, y, hue) {
 
 function gardenResource(match) {
   if (!match.mechanics.kitchenChain) return "food";
-  if (match.rooms.some((r) => r.type === "kitchen" && r.built && !r.dead)) return "biomass";
+  const kitchen = match.rooms.find((r) => r.type === "kitchen" && r.built && !r.dead);
+  if (kitchen && staffed(match, kitchen) >= 1) return "biomass";
   return "food";
+}
+
+function kitchenCooking(match) {
+  const kitchen = match.rooms.find((r) => r.type === "kitchen" && r.built && !r.dead);
+  return !!(kitchen && staffed(match, kitchen) >= 1);
 }
 
 function placePrebuilt(match, spec) {
@@ -1570,7 +1576,6 @@ function updateEnemies(match, dt) {
 function updateHeaters(match, dt) {
   for (const room of match.rooms) {
     if (room.type !== "heater" || !room.built || room.dead) continue;
-    if (staffed(match, room) < 1) continue;
     for (const iceKey of [...match.ice]) {
       const [x, y] = iceKey.split(",").map(Number);
       const warm = room.cells.some((c) => Math.hypot(x - c.x, y - c.y) <= HEATER_R);
@@ -1698,7 +1703,7 @@ function scoreStars(match) {
 }
 
 function cookRations(match, dt) {
-  if (match.rooms.some((r) => r.type === "kitchen" && r.built && !r.dead)) return;
+  if (kitchenCooking(match)) return;
   if ((match.core.stock.biomass || 0) < 1) return;
   match.rationCook = (match.rationCook || 0) + dt;
   const sec = 1.2;
@@ -1899,6 +1904,7 @@ function placeBest(match, type, scoreFn) {
 function staffFinale(match) {
   setTool(match, "assign");
   const keep = new Set(["scanner", "weapons", "shield"]);
+  if (match.ice && match.ice.size) keep.add("heater");
   const unpaid = unpaidCount(match);
   const haulersWanted = unpaid > 0 ? 2 : 1;
   const idle = () => match.kapsels.filter((k) => !k.assignment || k.assignment === match.core.id);

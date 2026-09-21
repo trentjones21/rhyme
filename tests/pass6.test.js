@@ -221,3 +221,102 @@ describe("look and juice for mid-campaign stations", () => {
     assert.ok(living.win.food >= 4);
   });
 });
+
+function staffHull(match) {
+  setTool(match, "assign");
+  for (const type of ["scanner", "weapons", "shield", "garden", "kitchen"]) {
+    const room = match.rooms.find((r) => r.type === type && !r.dead);
+    if (!room) continue;
+    if (!match.kapsels.some((k) => k.assignment === room.id)) assignTo(match, room);
+  }
+}
+
+function thumbFinale() {
+  const match = createMatch(levelById("7-06"), { seed: 11 });
+  hullKit(match);
+  resumeThink(match);
+  while (match.time < 240 && match.status === "playing") {
+    staffHull(match);
+    if (unpaidCount(match) >= 2 || coreStock(match, "mineral") < 4) {
+      tick(match, 2);
+      continue;
+    }
+    if (!match.rooms.some((r) => r.type === "garden" && !r.dead)) {
+      placeType(match, "garden");
+      tick(match, 1);
+      continue;
+    }
+    if (!match.rooms.some((r) => r.type === "kitchen" && !r.dead)) {
+      placeType(match, "kitchen");
+      tick(match, 1);
+      continue;
+    }
+    if (match.relics.filter((r) => r.linked).length < 4) {
+      tryPlaceTowardRelic(match);
+      tick(match, 1);
+      continue;
+    }
+    const guns = match.rooms.filter((r) => r.type === "weapons" && !r.dead).length;
+    if (match.enemies.length >= 3 && guns < 2) {
+      placeType(match, "weapons");
+      tick(match, 1);
+      continue;
+    }
+    tick(match, 2);
+  }
+  return match;
+}
+
+describe("a garden-first thumb wins Last Geometry", () => {
+  it("lets a hull gun reach scouts parked on the finale well", () => {
+    const m = createMatch(levelById("7-06"), { seed: 11 });
+    hullKit(m);
+    resumeThink(m);
+    waitUntil(m, (x) => x.rooms.some((r) => r.type === "weapons" && r.built), 40);
+    const gun = m.rooms.find((r) => r.type === "weapons" && r.built);
+    assert.ok(gun, "gun never built");
+    setTool(m, "assign");
+    assignTo(m, gun);
+    const gunner = m.kapsels.find((k) => k.assignment === gun.id);
+    if (gunner) {
+      gunner.x = gun.cx;
+      gunner.y = gun.cy;
+    }
+    const well = m.wells[0];
+    const px = m.layout.ox + (well.x + 0.5) * m.layout.cell;
+    const py = m.layout.oy + (well.y + 0.5) * m.layout.cell;
+    const reach = Math.hypot(px - gun.cx, py - gun.cy);
+    assert.ok(reach < 250, `well is ${reach.toFixed(0)}px from the hull gun`);
+    m.enemies.push({
+      x: px,
+      y: py,
+      hp: 24,
+      maxhp: 24,
+      speed: 0,
+      dps: 0,
+      r: 8,
+      cloaked: false,
+      vx: 0,
+      vy: 0,
+      dir: 0,
+      target: null,
+      state: "walking",
+      hitTimer: 0,
+      wobble: 0,
+    });
+    tick(m, 0.2);
+    assert.ok(m.shots.length >= 1 || m.shotsFired >= 1, "gun cannot see the well");
+  });
+
+  it("wins 7-06 without captainBeat if meals go down before monuments", () => {
+    const m = thumbFinale();
+    assert.equal(
+      m.status,
+      "won",
+      `${m.status} ${m.loseReason || m.winReason} t=${m.time.toFixed(1)} relics=${m.relics.filter((r) => r.linked).length} waves=${m.wavesCleared} food=${coreStock(m, "food")} deaths=${m.deaths}`
+    );
+    assert.equal(m.relics.filter((r) => r.linked).length, 4);
+    assert.ok(m.wavesCleared >= 4, m.wavesCleared);
+    assert.ok(m.stars >= 2, m.stars);
+  });
+});

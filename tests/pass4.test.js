@@ -264,6 +264,7 @@ function assignedTo(match, room) {
 
 function freeHaulers(match, n) {
   const keep = new Set(["scanner", "weapons", "shield"]);
+  if (match.ice && match.ice.size) keep.add("heater");
   let guard = 0;
   while (idleKapsels(match).length < n && guard++ < 8) {
     const room = match.rooms.find(

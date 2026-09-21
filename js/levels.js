@@ -496,7 +496,7 @@ export const LEVELS = [
   L("6-06", 6, "Icebreaker", {
     lesson: "The belt wants you slow when the scouts want you fast.",
     briefing: "Two waves, frost on the rim, a fold is legal if you earned it in world five. Use a heater.",
-    start: { minerals: 28, food: 12, crew: 5 },
+    start: { minerals: 28, food: 20, crew: 5 },
     ice: [
       { x: 2, y: 6 }, { x: 3, y: 6 }, { x: 5, y: 6 }, { x: 6, y: 6 },
       { x: 4, y: 3 }, { x: 4, y: 4 }, { x: 4, y: 8 }, { x: 4, y: 9 },
@@ -587,7 +587,7 @@ export const LEVELS = [
       { x: 4, y: 2 },
       { x: 4, y: 10 },
     ],
-    wells: [{ x: 7, y: 5, strength: 48 }],
+    wells: [{ x: 7, y: 5, strength: 36 }],
     mechanics: {
       cloak: true,
       cloakAll: true,

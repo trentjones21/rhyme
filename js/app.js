@@ -611,7 +611,7 @@ $("installBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=11").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=12").catch(() => {});
 }
 
 renderTitle();
@@ -719,7 +719,17 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
         hp: Math.round(match.core.hp),
         deaths: match.deaths,
         loseReason: match.loseReason,
-        rooms: match.rooms.filter((r) => r.type !== "core").map((r) => r.type),
+        crew: match.kapsels.length,
+        enemies: match.enemies.length,
+        rooms: match.rooms
+          .filter((r) => r.type !== "core")
+          .map((r) => r.type + (r.built ? "" : "*") + (r.dead ? "!" : "")),
+        staff: ["scanner", "weapons", "shield", "garden", "kitchen"].map((t) => {
+          const room = match.rooms.find((r) => r.type === t && !r.dead);
+          if (!room) return t + ":0";
+          const n = match.kapsels.filter((k) => k.assignment === room.id).length;
+          return t + ":" + n;
+        }),
       };
     },
     beat() {
