@@ -1913,6 +1913,10 @@ function placeBest(match, type, scoreFn) {
   return tapCell(match, best.x, best.y);
 }
 
+export function placeNearCore(match, type) {
+  return placeBest(match, type, scoreNearCoreCells);
+}
+
 function idleKapsels(match) {
   return match.kapsels.filter((k) => !k.assignment || k.assignment === match.core.id);
 }
@@ -1934,9 +1938,34 @@ function keepHaulers(match) {
   }
 }
 
+function staffCombat(match) {
+  const haulersWanted = unpaidCount(match) > 0 ? 2 : 1;
+  for (const type of ["scanner", "weapons", "shield"]) {
+    const room = match.rooms.find((r) => r.type === type && !r.dead);
+    if (!room || assignedCount(match, room) >= 1) continue;
+    const idle = idleKapsels(match).length;
+    const must = !room.built || (type === "scanner" && match.mechanics.cloak && match.enemies.length > 0);
+    if (room.built && type === "shield") continue;
+    if (idle <= haulersWanted && !must) continue;
+    if (idle < 1) {
+      if (!must) continue;
+      const donor = match.rooms.find(
+        (r) => (r.type === "garden" || r.type === "kitchen") && assignedCount(match, r) >= 1
+      );
+      if (!donor) continue;
+      match.selected = donor.id;
+      recall(match);
+    }
+    assignTo(match, room);
+  }
+}
+
 function staffJobs(match, order) {
+  staffCombat(match);
+  const combat = new Set(["scanner", "weapons", "shield"]);
   const haulersWanted = unpaidCount(match) > 0 ? 2 : 1;
   for (const type of order) {
+    if (combat.has(type)) continue;
     if (idleKapsels(match).length <= haulersWanted) break;
     const room = match.rooms.find((r) => r.type === type && !r.dead);
     if (!room) continue;

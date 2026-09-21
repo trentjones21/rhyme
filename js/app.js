@@ -23,6 +23,7 @@ import {
   coachText,
   captainBeat,
   thumbBeat,
+  placeNearCore,
 } from "./sim.js";
 import { LEVELS, WORLDS, levelById, nextLevel, levelsInWorld } from "./levels.js";
 import { loadSave, writeSave, completeLevel, worldUnlocked, campaignStats } from "./save.js";
@@ -653,16 +654,7 @@ if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
     },
     place(type) {
       if (!match) return false;
-      setTool(match, type);
-      for (let rot = 0; rot < 4; rot++) {
-        match.rot = rot;
-        for (let y = 0; y < match.rows; y++) {
-          for (let x = 0; x < match.cols; x++) {
-            if (canPlace(match, type, x, y, rot) && tapCell(match, x, y)) return true;
-          }
-        }
-      }
-      return false;
+      return placeNearCore(match, type);
     },
     assignType(type) {
       if (!match) return false;

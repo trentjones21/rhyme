@@ -10,6 +10,7 @@ import {
   canPlace,
   coreStock,
   assignTo,
+  recall,
   resumeThink,
   coachText,
   rotateShape,
@@ -18,6 +19,8 @@ import {
   remapLayout,
   computeLayout,
   thumbBeat,
+  placeNearCore,
+  SHIELD_R,
 } from "../js/sim.js";
 
 function tick(match, seconds) {
@@ -317,6 +320,18 @@ describe("a garden-first thumb wins Last Geometry", () => {
     assert.ok(m.shots.length >= 1 || m.shotsFired >= 1, "gun cannot see the well");
   });
 
+  it("lets a near-core hull aegis shade the core plus", () => {
+    const m = createMatch(levelById("7-06"), { seed: 11 });
+    remapLayout(m, computeLayout(430, 932, m.cols, m.rows, { top: 8, bottom: 8, left: 8, right: 8 }));
+    assert.equal(placeNearCore(m, "scanner"), true);
+    assert.equal(placeNearCore(m, "weapons"), true);
+    assert.equal(placeNearCore(m, "shield"), true);
+    const shield = m.rooms.find((r) => r.type === "shield");
+    assert.ok(shield);
+    const d = Math.hypot((shield.cx - m.core.cx) / m.layout.cell, (shield.cy - m.core.cy) / m.layout.cell);
+    assert.ok(d <= SHIELD_R, `aegis is ${d.toFixed(2)} cells from the plus; shade ${SHIELD_R}`);
+  });
+
   it("scales gun range with a tall portrait cell", () => {
     const m = createMatch(levelById("7-06"), { seed: 11 });
     remapLayout(m, computeLayout(430, 932, m.cols, m.rows, { top: 8, bottom: 8, left: 8, right: 8 }));
@@ -351,6 +366,28 @@ describe("a jammed hull still keeps haulers", () => {
       }
     }
   }
+
+  it("staffs aegis even while two blueprints are still dashed", () => {
+    const m = createMatch(levelById("7-06"), { seed: 11 });
+    hullKit(m);
+    resumeThink(m);
+    placeType(m, "garden");
+    placeType(m, "kitchen");
+    const shield = m.rooms.find((r) => r.type === "shield" && !r.dead);
+    assert.ok(shield, "no aegis");
+    setTool(m, "assign");
+    while (m.kapsels.some((k) => k.assignment === shield.id)) {
+      m.selected = shield.id;
+      recall(m);
+    }
+    assert.equal(m.kapsels.filter((k) => k.assignment === shield.id).length, 0);
+    assert.ok(unpaidCount(m) >= 2, unpaidCount(m));
+    thumbBeat(m);
+    assert.ok(
+      m.kapsels.some((k) => k.assignment === shield.id),
+      "aegis left empty while the kitchen was still dashed"
+    );
+  });
 
   it("recalls extra gunners so dashed rooms can finish", () => {
     const m = createMatch(levelById("7-06"), { seed: 11 });
