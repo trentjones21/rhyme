@@ -430,17 +430,19 @@ h1 { font-size: 42px; letter-spacing: 0.28em; font-weight: 560; margin: 18px 0 8
 }
 #tools {
   display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 2px 4px 4px;
-  scrollbar-width: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 2px 4px;
+  overflow: visible;
 }
-#tools::-webkit-scrollbar { display: none; }
 .tool {
-  flex: 0 0 auto;
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
+  flex: 0 1 calc((100% - 36px) / 7);
+  min-width: 44px;
+  max-width: 56px;
+  width: auto;
+  min-height: 44px;
+  height: 48px;
+  border-radius: 14px;
   background: linear-gradient(180deg, rgba(243, 240, 232, 0.12), rgba(243, 240, 232, 0.05));
   border: 1px solid transparent;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);

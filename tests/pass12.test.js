@@ -92,8 +92,8 @@ describe("look cache is not stuck on v30", () => {
     const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
     const app = readFileSync(new URL("../js/app.js", import.meta.url), "utf8");
     const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
-    assert.match(html, /app\.js\?v=33/);
-    assert.match(app, /sw\.js\?v=23/);
-    assert.match(sw, /rhyme-v23/);
+    assert.match(html, /app\.js\?v=34/);
+    assert.match(app, /sw\.js\?v=24/);
+    assert.match(sw, /rhyme-v24/);
   });
 });
